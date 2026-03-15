@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -39,13 +39,13 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require('../assets/basketball-logo.png')}
+      style={styles.background}
+      resizeMode="contain"
+    >
+      <View style={styles.overlay} />
       <View style={styles.content}>
-        <Image
-          source={require('../assets/basketball-logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
         <Text style={styles.title}>NBAInsightsPro</Text>
         <Text style={styles.subtitle}>AI-Powered NBA Betting Predictions</Text>
         
@@ -66,81 +66,102 @@ export default function LoginScreen() {
         
         <Text style={styles.guestNote}>Guest mode: Full access to predictions & articles</Text>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(26, 26, 46, 0.85)',
+  },
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 24,
+    zIndex: 1,
   },
   title: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#a0a0a0',
-    marginBottom: 48,
-    textAlign: 'center',
-  },
-  features: {
-    marginBottom: 48,
-  },
-  feature: {
-    fontSize: 16,
     color: '#fff',
     marginBottom: 12,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 10,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 60,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 5,
+  },
+  features: {
+    marginBottom: 60,
+  },
+  feature: {
+    fontSize: 17,
+    color: '#fff',
+    marginBottom: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 5,
   },
   guestButton: {
-    backgroundColor: '#16213e',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-    minWidth: 250,
-    marginBottom: 16,
+    backgroundColor: 'rgba(255, 107, 53, 0.9)',
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    borderRadius: 12,
+    minWidth: 280,
+    marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#ff6b35',
+    borderColor: '#fff',
   },
   guestButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   loginButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-    minWidth: 250,
+    backgroundColor: 'rgba(66, 133, 244, 0.9)',
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    borderRadius: 12,
+    minWidth: 280,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   guestNote: {
-    fontSize: 12,
-    color: '#808080',
-    marginTop: 16,
+    fontSize: 13,
+    color: '#fff',
+    marginTop: 20,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   loadingText: {
     fontSize: 18,

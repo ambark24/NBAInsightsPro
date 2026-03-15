@@ -252,31 +252,70 @@ async def logout(request: Request, authorization: Optional[str] = Header(None)):
 # ==================== NBA DATA SERVICE ====================
 
 async def fetch_nba_games_today():
-    """Fetch today's NBA games from balldontlie.io"""
+    """Fetch today's and upcoming NBA games from balldontlie.io with caching"""
     try:
-        today = datetime.now().strftime("%Y-%m-%d")
+        nba_api_key = os.getenv("NBA_API_KEY")
+        if not nba_api_key:
+            logger.error("NBA_API_KEY not found in environment")
+            return []
+        
+        # Check cache first - games cached for 1 hour
+        cache_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        cached_games = await db.games_cache.find(
+            {"cached_at": {"$gte": cache_time}},
+            {"_id": 0, "cached_at": 0}  # Exclude _id and cached_at
+        ).to_list(100)
+        
+        if cached_games:
+            logger.info(f"Returning {len(cached_games)} cached games")
+            return cached_games
+        
+        # Fetch fresh data
+        games = []
+        games_to_cache = []
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.balldontlie.io/v1/games",
-                params={"dates[]": today},
-                timeout=10.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            # Fetch only today and tomorrow to avoid rate limits
+            for day_offset in [0, 1]:
+                date = (datetime.now() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
+                try:
+                    response = await client.get(
+                        "https://api.balldontlie.io/nba/v1/games",
+                        params={"dates[]": date},
+                        headers={"Authorization": nba_api_key},
+                        timeout=10.0
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    for game in data.get("data", []):
+                        game_obj = {
+                            "game_id": str(game["id"]),
+                            "home_team": game["home_team"]["full_name"],
+                            "away_team": game["visitor_team"]["full_name"],
+                            "date": game["date"],
+                            "status": game["status"],
+                            "home_score": game.get("home_team_score"),
+                            "away_score": game.get("visitor_team_score")
+                        }
+                        games.append(game_obj)
+                        
+                        # Version with cache timestamp for storage
+                        cache_obj = game_obj.copy()
+                        cache_obj["cached_at"] = datetime.now(timezone.utc)
+                        games_to_cache.append(cache_obj)
+                    
+                    # Small delay to avoid rate limits
+                    await asyncio.sleep(0.5)
+                except Exception as e:
+                    logger.error(f"Error fetching games for {date}: {e}")
+                    continue
             
-            games = []
-            for game in data.get("data", []):
-                game_obj = {
-                    "game_id": str(game["id"]),
-                    "home_team": game["home_team"]["full_name"],
-                    "away_team": game["visitor_team"]["full_name"],
-                    "date": game["date"],
-                    "status": game["status"],
-                    "home_score": game.get("home_team_score"),
-                    "away_score": game.get("visitor_team_score")
-                }
-                games.append(game_obj)
+            # Cache the games
+            if games_to_cache:
+                await db.games_cache.delete_many({})  # Clear old cache
+                await db.games_cache.insert_many(games_to_cache)
             
+            logger.info(f"Fetched and cached {len(games)} NBA games")
             return games
     except Exception as e:
         logger.error(f"Error fetching NBA games: {e}")
@@ -402,11 +441,12 @@ async def generate_predictions_for_game(game: Dict[str, Any]) -> Optional[Dict[s
             "total_value": round(total, 1),
             "confidence": round(confidence, 1),
             "consensus_article": article,
-            "created_at": datetime.now(timezone.utc)
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
-        # Store prediction
-        await db.predictions.insert_one(prediction)
+        # Store prediction (without _id)
+        pred_copy = prediction.copy()
+        await db.predictions.insert_one(pred_copy)
         
         return prediction
         
