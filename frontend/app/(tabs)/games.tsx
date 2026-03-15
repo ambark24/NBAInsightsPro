@@ -46,9 +46,7 @@ export default function GamesScreen() {
 
   const fetchGames = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/games`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(`${BACKEND_URL}/api/games`);
       setGames(response.data);
     } catch (error) {
       console.error('Error fetching games:', error);

@@ -8,12 +8,14 @@ interface User {
   email: string;
   name: string;
   picture?: string;
+  isGuest?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
+  loginAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,9 +47,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
+  const loginAsGuest = () => {
+    const guestUser: User = {
+      user_id: 'guest',
+      email: 'guest@nbainsightspro.com',
+      name: 'Guest User',
+      isGuest: true,
+    };
+    setUser(guestUser);
+    setLoading(false);
+  };
+
   const logout = async () => {
     try {
-      await axios.post(`${BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true });
+      if (!user?.isGuest) {
+        await axios.post(`${BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -56,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, loginAsGuest }}>
       {children}
     </AuthContext.Provider>
   );

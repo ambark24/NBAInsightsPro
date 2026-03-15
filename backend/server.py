@@ -465,8 +465,8 @@ Write a professional, concise betting recommendation focusing on the key factors
 
 @api_router.get("/games")
 async def get_games(request: Request, authorization: Optional[str] = Header(None)):
-    """Get today's games with predictions"""
-    user = await get_current_user(request, authorization)
+    """Get today's games with predictions - PUBLIC ACCESS"""
+    # Allow public access - no authentication required
     
     # Fetch games
     games = await fetch_nba_games_today()
@@ -507,8 +507,8 @@ async def get_game_detail(
     request: Request,
     authorization: Optional[str] = Header(None)
 ):
-    """Get detailed game prediction"""
-    user = await get_current_user(request, authorization)
+    """Get detailed game prediction - PUBLIC ACCESS"""
+    # Allow public access - no authentication required
     
     prediction = await db.predictions.find_one(
         {"game_id": game_id},

@@ -38,9 +38,7 @@ export default function GameDetailScreen() {
   useEffect(() => {
     const fetchPrediction = async () => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/api/games/${id}`, {
-          withCredentials: true,
-        });
+        const response = await axios.get(`${BACKEND_URL}/api/games/${id}`);
         setPrediction(response.data);
       } catch (error) {
         console.error('Error fetching prediction:', error);

@@ -7,7 +7,7 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, loginAsGuest } = useAuth();
 
   useEffect(() => {
     if (user && !loading) {
@@ -25,6 +25,11 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    router.replace('/(tabs)/games');
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -36,7 +41,11 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.logo}>🏀</Text>
+        <Image
+          source={require('../assets/basketball-logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>NBAInsightsPro</Text>
         <Text style={styles.subtitle}>AI-Powered NBA Betting Predictions</Text>
         
@@ -47,9 +56,15 @@ export default function LoginScreen() {
           <Text style={styles.feature}>💬 Community Chat</Text>
         </View>
 
+        <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
+          <Text style={styles.guestButtonText}>Continue as Guest</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Sign in with Google</Text>
         </TouchableOpacity>
+        
+        <Text style={styles.guestNote}>Guest mode: Full access to predictions & articles</Text>
       </View>
     </View>
   );
@@ -67,8 +82,9 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   logo: {
-    fontSize: 80,
-    marginBottom: 16,
+    width: 120,
+    height: 120,
+    marginBottom: 24,
   },
   title: {
     fontSize: 32,
@@ -91,6 +107,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
+  guestButton: {
+    backgroundColor: '#16213e',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 8,
+    minWidth: 250,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#ff6b35',
+  },
+  guestButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   loginButton: {
     backgroundColor: '#4285f4',
     paddingHorizontal: 32,
@@ -102,6 +134,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  guestNote: {
+    fontSize: 12,
+    color: '#808080',
+    marginTop: 16,
     textAlign: 'center',
   },
   loadingText: {
