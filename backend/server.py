@@ -929,7 +929,7 @@ async def get_nba_highlights():
                                     "game_id": event_id,
                                     "teams": matchup,
                                     "date": event.get("date", ""),
-                                    "status": event.get("status", {}).get("type", {}).get("description", "")
+                                    "status": event.get("status", {}).get("type", {}).get("description", "Scheduled")
                                 }
                                 highlights.append(highlight)
                     
