@@ -868,6 +868,97 @@ async def get_player_props():
         logger.error(f"Error generating player props: {e}")
         return []
 
+# ==================== NBA HIGHLIGHTS ====================
+
+@api_router.get("/highlights")
+async def get_nba_highlights():
+    """Get NBA video highlights from ESPN - PUBLIC ACCESS"""
+    try:
+        # Check cache first - 1 hour cache
+        cache_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        cached_highlights = await db.highlights.find(
+            {"cached_at": {"$gte": cache_time}},
+            {"_id": 0, "cached_at": 0}
+        ).to_list(50)
+        
+        if cached_highlights:
+            logger.info(f"Returning {len(cached_highlights)} cached highlights")
+            return cached_highlights
+        
+        # Fetch from ESPN API - use direct video search approach
+        highlights = []
+        async with httpx.AsyncClient() as client:
+            # Method 1: Get recent game IDs and fetch their videos
+            today = datetime.now().strftime("%Y%m%d")
+            yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+            
+            # Fetch games from last 3 days
+            for day_offset in range(0, 3):
+                date = (datetime.now() - timedelta(days=day_offset)).strftime("%Y%m%d")
+                
+                try:
+                    resp = await client.get(
+                        "https://cdn.espn.com/core/nba/scoreboard",
+                        params={"xhr": "1", "dates": date},
+                        headers={"User-Agent": "Mozilla/5.0"},
+                        timeout=10.0
+                    )
+                    
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data.get("content", {})
+                        scoreboard = content.get("sbData", {})
+                        events = scoreboard.get("events", [])
+                        
+                        for event in events:
+                            event_id = event.get("id")
+                            competitors = event.get("competitions", [{}])[0].get("competitors", [])
+                            
+                            if len(competitors) >= 2:
+                                home_team = competitors[0].get("team", {}).get("displayName", "")
+                                away_team = competitors[1].get("team", {}).get("displayName", "")
+                                matchup = f"{away_team} @ {home_team}"
+                                
+                                # Create highlight link (ESPN standard format)
+                                highlight = {
+                                    "highlight_id": f"hl_{event_id}",
+                                    "title": f"{matchup} - Game Highlights",
+                                    "description": f"Watch full game highlights from {matchup}",
+                                    "url": f"https://www.espn.com/nba/game/_/gameId/{event_id}",
+                                    "thumbnail": f"https://a.espncdn.com/media/motion/2026/nba_highlights_{event_id}.jpg",
+                                    "game_id": event_id,
+                                    "teams": matchup,
+                                    "date": event.get("date", ""),
+                                    "status": event.get("status", {}).get("type", {}).get("description", "")
+                                }
+                                highlights.append(highlight)
+                    
+                    await asyncio.sleep(0.3)  # Rate limiting
+                except Exception as e:
+                    logger.error(f"Error fetching games for {date}: {e}")
+                    continue
+        
+        # Limit to 20 most recent
+        highlights = highlights[:20]
+        
+        # Cache the highlights
+        if highlights:
+            highlights_with_cache = []
+            for h in highlights:
+                h_copy = h.copy()
+                h_copy["cached_at"] = datetime.now(timezone.utc)
+                highlights_with_cache.append(h_copy)
+            
+            await db.highlights.delete_many({})
+            await db.highlights.insert_many(highlights_with_cache)
+        
+        logger.info(f"Fetched {len(highlights)} NBA game highlights from ESPN")
+        return highlights
+        
+    except Exception as e:
+        logger.error(f"Error fetching NBA highlights: {e}")
+        return []
+
 # ==================== ADMIN ROUTES ====================
 
 @api_router.post("/admin/refresh-predictions")
