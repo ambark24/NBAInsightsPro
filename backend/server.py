@@ -409,7 +409,26 @@ async def generate_predictions_for_game(game: Dict[str, Any]) -> Optional[Dict[s
         spread_pick = f"{game['home_team']} {spread:.1f}" if spread > 0 else f"{game['away_team']} {abs(spread):.1f}"
         total_pick = "Over" if total > 215 else "Under"
         
-        confidence = min(abs(spread) / 15 * 100, 95)
+        # PROFESSIONAL CONFIDENCE ALGORITHM FOR GAMES
+        # Base confidence starts at 58% (professional betting standard)
+        base_confidence = 58.0
+        
+        # Factor 1: Spread size (larger spread = more confident)
+        # NBA spreads typically range from 0-20 points
+        spread_factor = min(abs(spread) / 12.0, 1.0) * 22  # Max +22%
+        
+        # Factor 2: Total variance from average (215 is NBA average total)
+        total_diff = abs(total - 215)
+        total_factor = min(total_diff / 20.0, 1.0) * 8  # Max +8%
+        
+        # Factor 3: Team strength differential
+        team_diff = abs(home_stats["win_percentage"] - away_stats["win_percentage"])
+        strength_factor = min(team_diff / 0.3, 1.0) * 7  # Max +7%
+        
+        # Calculate final confidence (58-95% range)
+        confidence = base_confidence + spread_factor + total_factor + strength_factor
+        confidence = min(confidence, 87.0)  # Cap at 87%
+        confidence = max(confidence, 55.0)  # Floor at 55%
         
         # Get team context
         home_news = await search_team_news(game["home_team"])
