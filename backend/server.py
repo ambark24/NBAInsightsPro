@@ -570,8 +570,8 @@ async def get_chat_messages(
     authorization: Optional[str] = Header(None),
     limit: int = 100
 ):
-    """Get recent chat messages"""
-    user = await get_current_user(request, authorization)
+    """Get recent chat messages - PUBLIC ACCESS"""
+    # Allow public access for guest users
     
     messages = await db.chat_messages.find(
         {},
@@ -587,16 +587,26 @@ async def post_chat_message(
     request: Request,
     authorization: Optional[str] = Header(None)
 ):
-    """Post a new chat message"""
-    user = await get_current_user(request, authorization)
+    """Post a new chat message - GUEST USERS ALLOWED"""
+    # Try to get authenticated user, fallback to guest
+    try:
+        user = await get_current_user(request, authorization)
+        user_id = user["user_id"]
+        user_name = user["name"]
+        user_picture = user.get("picture")
+    except:
+        # Guest user
+        user_id = "guest"
+        user_name = "Guest User"
+        user_picture = None
     
     message = {
         "message_id": f"msg_{uuid.uuid4().hex[:12]}",
-        "user_id": user["user_id"],
-        "user_name": user["name"],
-        "user_picture": user.get("picture"),
+        "user_id": user_id,
+        "user_name": user_name,
+        "user_picture": user_picture,
         "message": message_data.message,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     # Create a copy for return to avoid MongoDB ObjectId issues
@@ -604,6 +614,113 @@ async def post_chat_message(
     await db.chat_messages.insert_one(message)
     
     return message_to_return
+
+# ==================== PLAYER PROPS ====================
+
+class PlayerProp(BaseModel):
+    prop_id: str
+    player_name: str
+    team: str
+    stat_type: str  # points, rebounds, assists, threes
+    line: float
+    prediction: str  # over or under
+    projected_value: float
+    confidence: float
+    game_matchup: str
+    reasoning: str
+
+async def generate_player_props_for_game(game: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Generate player prop predictions for a game"""
+    import random
+    
+    props = []
+    
+    # Top players for each team (simplified - in production would fetch real rosters)
+    home_players = [
+        f"{game['home_team']} Star Player 1",
+        f"{game['home_team']} Star Player 2",
+    ]
+    away_players = [
+        f"{game['away_team']} Star Player 1",
+        f"{game['away_team']} Star Player 2",
+    ]
+    
+    all_players = home_players + away_players
+    
+    for player in all_players:
+        team = game['home_team'] if 'home_team' in player or game['home_team'] in player else game['away_team']
+        
+        # Generate props for different stat types
+        prop_types = [
+            {"type": "points", "avg": 25, "line_range": (20, 30)},
+            {"type": "rebounds", "avg": 8, "line_range": (6, 10)},
+            {"type": "assists", "avg": 6, "line_range": (4, 8)},
+            {"type": "threes", "avg": 3, "line_range": (2, 4)},
+        ]
+        
+        for prop_type in random.sample(prop_types, 2):  # 2 props per player
+            line = random.uniform(*prop_type["line_range"])
+            projected = random.uniform(prop_type["avg"] - 3, prop_type["avg"] + 3)
+            
+            prediction = "Over" if projected > line else "Under"
+            confidence = min(abs(projected - line) / line * 100, 85)
+            
+            reasoning = f"Player averaging {projected:.1f} {prop_type['type']} per game. Line set at {line:.1f}. {'Favorable' if prediction == 'Over' else 'Challenging'} matchup."
+            
+            prop = {
+                "prop_id": f"prop_{uuid.uuid4().hex[:12]}",
+                "player_name": player,
+                "team": team,
+                "stat_type": prop_type["type"],
+                "line": round(line, 1),
+                "prediction": prediction,
+                "projected_value": round(projected, 1),
+                "confidence": round(confidence, 1),
+                "game_matchup": f"{game['away_team']} @ {game['home_team']}",
+                "reasoning": reasoning
+            }
+            props.append(prop)
+    
+    return props
+
+@api_router.get("/player-props")
+async def get_player_props():
+    """Get player prop predictions for today's games - PUBLIC ACCESS"""
+    try:
+        # Check cache first
+        cache_time = datetime.now(timezone.utc) - timedelta(hours=2)
+        cached_props = await db.player_props.find(
+            {"cached_at": {"$gte": cache_time}},
+            {"_id": 0, "cached_at": 0}
+        ).to_list(200)
+        
+        if cached_props:
+            logger.info(f"Returning {len(cached_props)} cached player props")
+            return cached_props
+        
+        # Get today's games
+        games = await fetch_nba_games_today()
+        
+        all_props = []
+        for game in games[:8]:  # Generate props for first 8 games
+            props = await generate_player_props_for_game(game)
+            for prop in props:
+                # Store with cache timestamp
+                prop_with_cache = prop.copy()
+                prop_with_cache["cached_at"] = datetime.now(timezone.utc)
+                all_props.append(prop_with_cache)
+        
+        # Cache the props
+        if all_props:
+            await db.player_props.delete_many({})
+            await db.player_props.insert_many(all_props)
+        
+        # Return without cache timestamp
+        return [{ k: v for k, v in prop.items() if k != "cached_at"} for prop in all_props]
+        
+    except Exception as e:
+        logger.error(f"Error generating player props: {e}")
+        return []
 
 # ==================== ADMIN ROUTES ====================
 

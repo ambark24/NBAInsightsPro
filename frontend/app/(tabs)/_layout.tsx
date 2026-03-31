@@ -6,6 +6,10 @@ const tabBarIconGames = ({ color, size }: { color: string; size: number }) => (
   <Ionicons name="basketball" size={size} color={color} />
 );
 
+const tabBarIconProps = ({ color, size }: { color: string; size: number }) => (
+  <Ionicons name="stats-chart" size={size} color={color} />
+);
+
 const tabBarIconChat = ({ color, size }: { color: string; size: number }) => (
   <Ionicons name="chatbubbles" size={size} color={color} />
 );
@@ -41,6 +45,13 @@ export default function TabLayout() {
         options={{
           title: 'Games',
           tabBarIcon: tabBarIconGames,
+        }}
+      />
+      <Tabs.Screen
+        name="props"
+        options={{
+          title: 'Player Props',
+          tabBarIcon: tabBarIconProps,
         }}
       />
       <Tabs.Screen

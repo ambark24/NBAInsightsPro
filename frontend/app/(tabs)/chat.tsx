@@ -35,9 +35,7 @@ export default function ChatScreen() {
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/chat/messages`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(`${BACKEND_URL}/api/chat/messages`);
       setMessages(response.data);
       setLoading(false);
     } catch (error) {
@@ -73,8 +71,7 @@ export default function ChatScreen() {
     try {
       await axios.post(
         `${BACKEND_URL}/api/chat/messages`,
-        { message: newMessage },
-        { withCredentials: true }
+        { message: newMessage }
       );
       setNewMessage('');
       fetchMessages();
