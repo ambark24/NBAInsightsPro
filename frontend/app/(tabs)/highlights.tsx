@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Linking,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +29,7 @@ interface Highlight {
   teams: string;
   date: string;
   duration?: number;
+  status?: string;
 }
 
 export default function HighlightsScreen() {
@@ -35,6 +38,7 @@ export default function HighlightsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Highlight | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [webViewError, setWebViewError] = useState(false);
 
   const fetchHighlights = async () => {
     try {
@@ -60,11 +64,20 @@ export default function HighlightsScreen() {
   const playVideo = (highlight: Highlight) => {
     setSelectedVideo(highlight);
     setShowVideoModal(true);
+    setWebViewError(false);
   };
 
   const closeVideo = () => {
     setShowVideoModal(false);
+    setWebViewError(false);
     setTimeout(() => setSelectedVideo(null), 300);
+  };
+
+  const openInBrowser = () => {
+    if (selectedVideo?.url) {
+      Linking.openURL(selectedVideo.url);
+      closeVideo();
+    }
   };
 
   if (loading) {
@@ -87,6 +100,18 @@ export default function HighlightsScreen() {
           <Text style={styles.headerTitle}>NBA Highlights</Text>
           <Text style={styles.headerSubtitle}>{highlights.length} videos from ESPN</Text>
         </View>
+
+        {Platform.OS === 'web' && (
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle" size={24} color="#ff6b35" />
+            <View style={styles.infoText}>
+              <Text style={styles.infoTitle}>Web Preview Mode</Text>
+              <Text style={styles.infoDescription}>
+                Videos will open in browser. In the published mobile app, videos play seamlessly in-app!
+              </Text>
+            </View>
+          </View>
+        )}
 
         {highlights.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -128,7 +153,9 @@ export default function HighlightsScreen() {
                 )}
                 <View style={styles.metaRow}>
                   <Ionicons name="play" size={14} color="#a0a0a0" />
-                  <Text style={styles.watchText}>Tap to watch highlights</Text>
+                  <Text style={styles.watchText}>
+                    {Platform.OS === 'web' ? 'Tap to watch in browser' : 'Tap to watch highlights'}
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -137,7 +164,11 @@ export default function HighlightsScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Powered by ESPN</Text>
-          <Text style={styles.footerSubtext}>Videos play in-app</Text>
+          <Text style={styles.footerSubtext}>
+            {Platform.OS === 'web' 
+              ? 'Videos open in browser (in-app on published mobile app)' 
+              : 'Videos play in-app'}
+          </Text>
         </View>
       </ScrollView>
 
@@ -156,24 +187,48 @@ export default function HighlightsScreen() {
             <Text style={styles.modalTitle} numberOfLines={1}>
               {selectedVideo?.title}
             </Text>
+            <TouchableOpacity style={styles.browserButton} onPress={openInBrowser}>
+              <Ionicons name="open-outline" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
           
-          {selectedVideo && (
-            <WebView
-              source={{ uri: selectedVideo.url }}
-              style={styles.webView}
-              allowsFullscreenVideo
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled
-              domStorageEnabled
-              startInLoadingState
-              renderLoading={() => (
-                <View style={styles.webViewLoading}>
-                  <ActivityIndicator size="large" color="#ff6b35" />
-                  <Text style={styles.loadingText}>Loading ESPN...</Text>
-                </View>
-              )}
-            />
+          {webViewError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={64} color="#ff6b35" />
+              <Text style={styles.errorTitle}>Video Unavailable in Preview</Text>
+              <Text style={styles.errorText}>
+                ESPN videos are restricted in WebView preview mode.
+                {'\n\n'}
+                In the published mobile app, videos will play seamlessly!
+              </Text>
+              <TouchableOpacity style={styles.browserOpenButton} onPress={openInBrowser}>
+                <Ionicons name="open-outline" size={20} color="#fff" />
+                <Text style={styles.browserOpenText}>Open in Browser Instead</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            selectedVideo && (
+              <WebView
+                source={{ uri: selectedVideo.url }}
+                style={styles.webView}
+                allowsFullscreenVideo
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+                startInLoadingState
+                onError={() => setWebViewError(true)}
+                onHttpError={() => setWebViewError(true)}
+                renderLoading={() => (
+                  <View style={styles.webViewLoading}>
+                    <ActivityIndicator size="large" color="#ff6b35" />
+                    <Text style={styles.loadingText}>Loading ESPN...</Text>
+                    <Text style={styles.loadingSubtext}>
+                      If this takes too long, try opening in browser
+                    </Text>
+                  </View>
+                )}
+              />
+            )
           )}
         </View>
       </Modal>
@@ -205,6 +260,32 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#a0a0a0',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: '#16213e',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ff6b35',
+    alignItems: 'center',
+  },
+  infoText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#ff6b35',
+    marginBottom: 4,
+  },
+  infoDescription: {
+    fontSize: 13,
+    color: '#c0c0c0',
+    lineHeight: 18,
   },
   emptyContainer: {
     padding: 48,
@@ -321,6 +402,7 @@ const styles = StyleSheet.create({
   footerSubtext: {
     fontSize: 11,
     color: '#606060',
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
@@ -345,6 +427,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  browserButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   webView: {
     flex: 1,
     backgroundColor: '#000',
@@ -363,5 +449,48 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#fff',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#a0a0a0',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#1a1a2e',
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 24,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#c0c0c0',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  browserOpenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff6b35',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  browserOpenText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });
