@@ -13,9 +13,6 @@ from datetime import datetime, timezone, timedelta
 import httpx
 import asyncio
 from bs4 import BeautifulSoup
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-import pickle
 import json
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
