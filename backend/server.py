@@ -13,7 +13,6 @@ from datetime import datetime, timezone, timedelta
 import httpx
 import asyncio
 from bs4 import BeautifulSoup
-import xgboost as xgb
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import pickle

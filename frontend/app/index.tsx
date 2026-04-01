@@ -16,8 +16,8 @@ export default function LoginScreen() {
   }, [user, loading, router]);
 
   const handleLogin = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = `${BACKEND_URL}/`;
+    // Get the actual current URL origin for OAuth redirect
+    const redirectUrl = typeof window !== 'undefined' ? window.location.origin + '/' : '/';
     const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
     
     if (typeof window !== 'undefined') {
