@@ -56,12 +56,12 @@ export default function LoginScreen() {
           <Text style={styles.feature}>Community Chat</Text>
         </View>
 
-        <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
-          <Text style={styles.guestButtonText}>Continue as Guest</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
+          <Text style={styles.guestButtonText}>Continue as Guest</Text>
         </TouchableOpacity>
         
         <Text style={styles.guestNote}>Guest mode: Full access to predictions & articles</Text>
@@ -133,20 +133,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
   },
   guestButton: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 40,
-    paddingVertical: 18,
-    borderRadius: 12,
-    minWidth: 280,
-    marginBottom: 20,
-  },
-  guestButtonText: {
-    color: '#000000',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  loginButton: {
     backgroundColor: 'transparent',
     paddingHorizontal: 40,
     paddingVertical: 18,
@@ -155,8 +141,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
   },
-  loginButtonText: {
+  guestButtonText: {
     color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  loginButton: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    borderRadius: 12,
+    minWidth: 280,
+    marginBottom: 20,
+  },
+  loginButtonText: {
+    color: '#000000',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
