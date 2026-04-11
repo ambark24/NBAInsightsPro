@@ -11,7 +11,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (user && !loading) {
-      router.replace('/(tabs)/games');
+      router.replace('/(tabs)/home');
     }
   }, [user, loading, router]);
 
@@ -26,7 +26,7 @@ export default function LoginScreen() {
 
   const handleGuestLogin = () => {
     loginAsGuest();
-    router.replace('/(tabs)/games');
+    router.replace('/(tabs)/home');
   };
 
   if (loading) {

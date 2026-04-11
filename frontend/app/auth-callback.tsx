@@ -32,7 +32,7 @@ export default function AuthCallback() {
         );
 
         if (response.data) {
-          router.replace('/(tabs)/games');
+          router.replace('/(tabs)/home');
         } else {
           router.replace('/');
         }

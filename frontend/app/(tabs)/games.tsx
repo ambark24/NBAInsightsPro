@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -81,7 +82,11 @@ export default function GamesScreen() {
       }
     >
       <View style={styles.header}>
+        <View style={styles.headerDeco}>
+          <Ionicons name="basketball-outline" size={80} color="rgba(255,255,255,0.04)" />
+        </View>
         <Text style={styles.headerTitle}>Today's Games</Text>
+        <View style={styles.headerAccent} />
         <Text style={styles.headerSubtitle}>{games.length} games with AI predictions</Text>
       </View>
 
@@ -167,6 +172,21 @@ const styles = StyleSheet.create({
   header: {
     padding: 24,
     paddingTop: 32,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerDeco: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    opacity: 1,
+  },
+  headerAccent: {
+    width: 40,
+    height: 3,
+    backgroundColor: '#ffffff',
+    borderRadius: 2,
+    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 28,
