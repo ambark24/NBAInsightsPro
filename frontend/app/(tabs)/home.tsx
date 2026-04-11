@@ -149,7 +149,7 @@ export default function HomeScreen() {
 
         {/* Quick Stats Row */}
         <View style={styles.quickStats}>
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/games')}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/predictions')}>
             <View style={styles.statIconWrap}>
               <Ionicons name="basketball" size={20} color="#ffffff" />
             </View>
@@ -157,7 +157,7 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Games</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/props')}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/predictions')}>
             <View style={styles.statIconWrap}>
               <Ionicons name="stats-chart" size={20} color="#ffffff" />
             </View>
@@ -196,7 +196,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => router.push('/(tabs)/games')}
+            onPress={() => router.push('/(tabs)/predictions')}
           >
             <Text style={styles.viewAllText}>View All</Text>
             <Ionicons name="chevron-forward" size={16} color="#ffffff" />
@@ -250,7 +250,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => router.push('/(tabs)/props')}
+            onPress={() => router.push('/(tabs)/predictions')}
           >
             <Text style={styles.viewAllText}>View All</Text>
             <Ionicons name="chevron-forward" size={16} color="#ffffff" />
@@ -269,7 +269,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={prop.prop_id}
                 style={styles.propPreviewCard}
-                onPress={() => router.push('/(tabs)/props')}
+                onPress={() => router.push('/(tabs)/predictions')}
               >
                 <View style={styles.propPreviewHeader}>
                   <Text style={styles.propPlayerName} numberOfLines={1}>{prop.player_name}</Text>
