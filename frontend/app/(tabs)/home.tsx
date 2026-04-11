@@ -165,7 +165,7 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Props</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/highlights')}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(tabs)/media')}>
             <View style={styles.statIconWrap}>
               <Ionicons name="play-circle" size={20} color="#ffffff" />
             </View>
@@ -301,7 +301,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => router.push('/(tabs)/highlights')}
+            onPress={() => router.push('/(tabs)/media')}
           >
             <Text style={styles.viewAllText}>View All</Text>
             <Ionicons name="chevron-forward" size={16} color="#ffffff" />
@@ -320,7 +320,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={hl.highlight_id}
                 style={styles.highlightPreviewCard}
-                onPress={() => router.push('/(tabs)/highlights')}
+                onPress={() => router.push('/(tabs)/media')}
               >
                 <View style={styles.highlightThumb}>
                   <Ionicons name="basketball" size={28} color="#333333" />
