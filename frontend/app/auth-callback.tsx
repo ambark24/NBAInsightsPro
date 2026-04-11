@@ -15,7 +15,6 @@ export default function AuthCallback() {
 
     const processAuth = async () => {
       try {
-        // Get session_id from URL hash
         const hash = typeof window !== 'undefined' ? window.location.hash : '';
         const params = new URLSearchParams(hash.substring(1));
         const sessionId = params.get('session_id');
@@ -26,7 +25,6 @@ export default function AuthCallback() {
           return;
         }
 
-        // Exchange session_id for session_token
         const response = await axios.post(
           `${BACKEND_URL}/api/auth/session`,
           { session_id: sessionId },
@@ -34,7 +32,6 @@ export default function AuthCallback() {
         );
 
         if (response.data) {
-          // Redirect to main app
           router.replace('/(tabs)/games');
         } else {
           router.replace('/');
@@ -58,12 +55,12 @@ export default function AuthCallback() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
     fontSize: 18,
-    color: '#fff',
+    color: '#ffffff',
   },
 });

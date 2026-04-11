@@ -38,29 +38,29 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.infoCard}>
-          <Text style={styles.infoText}>🏀 NBAInsightsPro uses advanced XGBoost machine learning algorithms combined with real-time web data to generate accurate betting predictions.</Text>
-          <Text style={styles.infoText}>💡 Our predictions analyze team statistics, recent performance, and contextual information to provide moneyline, spread, and total score recommendations.</Text>
+          <Text style={styles.infoText}>NBAInsightsPro uses advanced XGBoost machine learning algorithms combined with real-time web data to generate accurate betting predictions.</Text>
+          <Text style={styles.infoText}>Our predictions analyze team statistics, recent performance, and contextual information to provide moneyline, spread, and total score recommendations.</Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Features</Text>
         <View style={styles.featureCard}>
-          <Ionicons name="analytics" size={24} color="#ff6b35" />
+          <Ionicons name="analytics" size={24} color="#ffffff" />
           <View style={styles.featureContent}>
             <Text style={styles.featureTitle}>ML Predictions</Text>
             <Text style={styles.featureDescription}>XGBoost-powered score predictions</Text>
           </View>
         </View>
         <View style={styles.featureCard}>
-          <Ionicons name="newspaper" size={24} color="#ff6b35" />
+          <Ionicons name="newspaper" size={24} color="#ffffff" />
           <View style={styles.featureContent}>
             <Text style={styles.featureTitle}>AI Articles</Text>
             <Text style={styles.featureDescription}>GPT-generated consensus analysis</Text>
           </View>
         </View>
         <View style={styles.featureCard}>
-          <Ionicons name="chatbubbles" size={24} color="#ff6b35" />
+          <Ionicons name="chatbubbles" size={24} color="#ffffff" />
           <View style={styles.featureContent}>
             <Text style={styles.featureTitle}>Community Chat</Text>
             <Text style={styles.featureDescription}>Discuss picks with other users</Text>
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out" size={20} color="#fff" />
+          <Ionicons name="log-out" size={20} color="#000000" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -86,7 +86,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   header: {
     alignItems: 'center',
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -105,17 +105,17 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#000000',
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 4,
   },
   email: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   section: {
     padding: 16,
@@ -123,30 +123,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
   },
   infoText: {
     fontSize: 14,
-    color: '#c0c0c0',
+    color: '#cccccc',
     marginBottom: 12,
     lineHeight: 20,
   },
   featureCard: {
     flexDirection: 'row',
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
     alignItems: 'center',
   },
   featureContent: {
@@ -156,16 +156,16 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 4,
   },
   featureDescription: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#d32f2f',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     justifyContent: 'center',
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000000',
     marginLeft: 8,
   },
   footer: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#606060',
+    color: '#666666',
     marginBottom: 4,
   },
 });

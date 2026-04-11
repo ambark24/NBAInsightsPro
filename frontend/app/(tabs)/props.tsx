@@ -76,7 +76,7 @@ export default function PlayerPropsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff6b35" />
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
@@ -110,7 +110,7 @@ export default function PlayerPropsScreen() {
       <ScrollView
         style={styles.propsList}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ff6b35" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
         }
       >
         {filteredProps.length === 0 ? (
@@ -122,7 +122,7 @@ export default function PlayerPropsScreen() {
             <View key={prop.prop_id} style={styles.propCard}>
               <View style={styles.propHeader}>
                 <View style={styles.playerInfo}>
-                  <Ionicons name={getStatIcon(prop.stat_type)} size={20} color="#ff6b35" />
+                  <Ionicons name={getStatIcon(prop.stat_type)} size={20} color="#ffffff" />
                   <View style={styles.playerText}>
                     <Text style={styles.playerName}>{prop.player_name}</Text>
                     <Text style={styles.matchup}>{prop.game_matchup}</Text>
@@ -165,11 +165,11 @@ export default function PlayerPropsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -180,12 +180,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   filterContainer: {
     maxHeight: 50,
@@ -198,22 +198,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
   },
   filterChipActive: {
-    backgroundColor: '#ff6b35',
-    borderColor: '#ff6b35',
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
   },
   filterText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
     fontWeight: '600',
   },
   filterTextActive: {
-    color: '#fff',
+    color: '#000000',
   },
   propsList: {
     flex: 1,
@@ -224,16 +224,16 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   propCard: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
   },
   propHeader: {
     marginBottom: 16,
@@ -249,16 +249,16 @@ const styles = StyleSheet.create({
   playerName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 4,
   },
   matchup: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   propDetails: {
     borderTopWidth: 1,
-    borderTopColor: '#0f3460',
+    borderTopColor: '#333333',
     paddingTop: 12,
   },
   statRow: {
@@ -270,11 +270,11 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#ff6b35',
+    color: '#ffffff',
   },
   line: {
     fontSize: 14,
-    color: '#fff',
+    color: '#ffffff',
     fontWeight: '600',
   },
   predictionRow: {
@@ -291,38 +291,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   overBadge: {
-    backgroundColor: '#4caf50',
+    backgroundColor: '#ffffff',
   },
   underBadge: {
-    backgroundColor: '#f44336',
+    backgroundColor: '#444444',
   },
   predictionText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#000000',
     marginRight: 8,
   },
   projectedValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#000000',
   },
   confidenceContainer: {
     alignItems: 'flex-end',
   },
   confidenceLabel: {
     fontSize: 11,
-    color: '#a0a0a0',
+    color: '#999999',
     marginBottom: 2,
   },
   confidenceValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
   },
   reasoning: {
     fontSize: 13,
-    color: '#c0c0c0',
+    color: '#cccccc',
     lineHeight: 18,
   },
 });

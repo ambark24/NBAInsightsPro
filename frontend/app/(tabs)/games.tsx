@@ -68,7 +68,7 @@ export default function GamesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff6b35" />
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
@@ -77,7 +77,7 @@ export default function GamesScreen() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ff6b35" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
       }
     >
       <View style={styles.header}>
@@ -156,11 +156,11 @@ export default function GamesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -171,12 +171,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   emptyContainer: {
     padding: 48,
@@ -184,21 +184,21 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   gameCard: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
   },
   gameTeams: {
     marginBottom: 16,
@@ -212,23 +212,23 @@ const styles = StyleSheet.create({
   teamName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#ffffff',
     flex: 1,
   },
   score: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ff6b35',
+    color: '#ffffff',
   },
   vs: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#999999',
     textAlign: 'center',
     marginVertical: 4,
   },
   predictionInfo: {
     borderTopWidth: 1,
-    borderTopColor: '#0f3460',
+    borderTopColor: '#333333',
     paddingTop: 16,
   },
   pickRow: {
@@ -241,17 +241,17 @@ const styles = StyleSheet.create({
   },
   pickLabel: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#999999',
     marginBottom: 4,
   },
   pickValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
   },
   confidenceBar: {
     height: 24,
-    backgroundColor: '#0f3460',
+    backgroundColor: '#222222',
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
   },
   confidenceText: {
     position: 'absolute',
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000000',
   },
   noPrediction: {
     padding: 16,
@@ -278,6 +278,6 @@ const styles = StyleSheet.create({
   },
   noPredictionText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
 });

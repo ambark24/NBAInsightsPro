@@ -47,7 +47,6 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchMessages();
     
-    // Poll for new messages every 3 seconds
     const interval = setInterval(() => {
       fetchMessages();
     }, 3000);
@@ -56,7 +55,6 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages update
     if (messages.length > 0 && flatListRef.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -104,8 +102,8 @@ export default function ChatScreen() {
           ]}
         >
           {!isOwnMessage && <Text style={styles.userName}>{item.user_name}</Text>}
-          <Text style={styles.messageText}>{item.message}</Text>
-          <Text style={styles.timestamp}>
+          <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>{item.message}</Text>
+          <Text style={[styles.timestamp, isOwnMessage && styles.ownTimestamp]}>
             {new Date(item.created_at).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
@@ -119,7 +117,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff6b35" />
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
@@ -150,7 +148,7 @@ export default function ChatScreen() {
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Type a message..."
-          placeholderTextColor="#808080"
+          placeholderTextColor="#666666"
           multiline
           maxLength={500}
         />
@@ -160,9 +158,9 @@ export default function ChatScreen() {
           disabled={!newMessage.trim() || sending}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#000000" />
           ) : (
-            <Ionicons name="send" size={20} color="#fff" />
+            <Ionicons name="send" size={20} color="#000000" />
           )}
         </TouchableOpacity>
       </View>
@@ -173,11 +171,11 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -185,17 +183,17 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 32,
     borderBottomWidth: 1,
-    borderBottomColor: '#0f3460',
+    borderBottomColor: '#333333',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   messagesList: {
     padding: 16,
@@ -215,13 +213,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
   avatarText: {
-    color: '#fff',
+    color: '#000000',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -231,56 +229,66 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   ownBubble: {
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
     borderBottomRightRadius: 4,
   },
   otherBubble: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   userName: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ff6b35',
+    color: '#ffffff',
     marginBottom: 4,
   },
   messageText: {
     fontSize: 15,
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 4,
+  },
+  ownMessageText: {
+    color: '#000000',
   },
   timestamp: {
     fontSize: 11,
-    color: '#c0c0c0',
+    color: '#999999',
     alignSelf: 'flex-end',
+  },
+  ownTimestamp: {
+    color: '#666666',
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#0f3460',
+    borderTopColor: '#333333',
     alignItems: 'center',
   },
   input: {
     flex: 1,
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginRight: 8,
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 15,
     maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   sendButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#4a4a4a',
+    backgroundColor: '#333333',
   },
 });

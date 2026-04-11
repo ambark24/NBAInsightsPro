@@ -83,7 +83,7 @@ export default function HighlightsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff6b35" />
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
@@ -93,7 +93,7 @@ export default function HighlightsScreen() {
       <ScrollView
         style={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ff6b35" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
         }
       >
         <View style={styles.header}>
@@ -103,7 +103,7 @@ export default function HighlightsScreen() {
 
         {Platform.OS === 'web' && (
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={24} color="#ff6b35" />
+            <Ionicons name="information-circle" size={24} color="#ffffff" />
             <View style={styles.infoText}>
               <Text style={styles.infoTitle}>Web Preview Mode</Text>
               <Text style={styles.infoDescription}>
@@ -115,7 +115,7 @@ export default function HighlightsScreen() {
 
         {highlights.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="videocam-off" size={48} color="#606060" />
+            <Ionicons name="videocam-off" size={48} color="#666666" />
             <Text style={styles.emptyText}>No highlights available</Text>
             <Text style={styles.emptySubtext}>Check back later for game highlights</Text>
           </View>
@@ -128,10 +128,10 @@ export default function HighlightsScreen() {
             >
               <View style={styles.thumbnailContainer}>
                 <View style={styles.thumbnailPlaceholder}>
-                  <Ionicons name="basketball" size={40} color="#ff6b35" />
+                  <Ionicons name="basketball" size={40} color="#ffffff" />
                 </View>
                 <View style={styles.playOverlay}>
-                  <Ionicons name="play-circle" size={64} color="rgba(255, 107, 53, 0.9)" />
+                  <Ionicons name="play-circle" size={64} color="rgba(255, 255, 255, 0.9)" />
                 </View>
                 <View style={styles.espnBadge}>
                   <Text style={styles.espnText}>ESPN</Text>
@@ -142,7 +142,7 @@ export default function HighlightsScreen() {
                 <Text style={styles.highlightTitle}>{highlight.title}</Text>
                 {highlight.teams && (
                   <View style={styles.teamsRow}>
-                    <Ionicons name="basketball-outline" size={14} color="#ff6b35" />
+                    <Ionicons name="basketball-outline" size={14} color="#ffffff" />
                     <Text style={styles.teamsText}>{highlight.teams}</Text>
                   </View>
                 )}
@@ -152,7 +152,7 @@ export default function HighlightsScreen() {
                   </View>
                 )}
                 <View style={styles.metaRow}>
-                  <Ionicons name="play" size={14} color="#a0a0a0" />
+                  <Ionicons name="play" size={14} color="#999999" />
                   <Text style={styles.watchText}>
                     {Platform.OS === 'web' ? 'Tap to watch in browser' : 'Tap to watch highlights'}
                   </Text>
@@ -182,19 +182,19 @@ export default function HighlightsScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity style={styles.closeButton} onPress={closeVideo}>
-              <Ionicons name="close" size={28} color="#fff" />
+              <Ionicons name="close" size={28} color="#ffffff" />
             </TouchableOpacity>
             <Text style={styles.modalTitle} numberOfLines={1}>
               {selectedVideo?.title}
             </Text>
             <TouchableOpacity style={styles.browserButton} onPress={openInBrowser}>
-              <Ionicons name="open-outline" size={24} color="#fff" />
+              <Ionicons name="open-outline" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
           
           {webViewError ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={64} color="#ff6b35" />
+              <Ionicons name="alert-circle" size={64} color="#ffffff" />
               <Text style={styles.errorTitle}>Video Unavailable in Preview</Text>
               <Text style={styles.errorText}>
                 ESPN videos are restricted in WebView preview mode.
@@ -202,7 +202,7 @@ export default function HighlightsScreen() {
                 In the published mobile app, videos will play seamlessly!
               </Text>
               <TouchableOpacity style={styles.browserOpenButton} onPress={openInBrowser}>
-                <Ionicons name="open-outline" size={20} color="#fff" />
+                <Ionicons name="open-outline" size={20} color="#000000" />
                 <Text style={styles.browserOpenText}>Open in Browser Instead</Text>
               </TouchableOpacity>
             </View>
@@ -220,7 +220,7 @@ export default function HighlightsScreen() {
                 onHttpError={() => setWebViewError(true)}
                 renderLoading={() => (
                   <View style={styles.webViewLoading}>
-                    <ActivityIndicator size="large" color="#ff6b35" />
+                    <ActivityIndicator size="large" color="#ffffff" />
                     <Text style={styles.loadingText}>Loading ESPN...</Text>
                     <Text style={styles.loadingSubtext}>
                       If this takes too long, try opening in browser
@@ -239,11 +239,11 @@ export default function HighlightsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -254,22 +254,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     marginHorizontal: 16,
     marginBottom: 20,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ff6b35',
+    borderColor: '#ffffff',
     alignItems: 'center',
   },
   infoText: {
@@ -279,12 +279,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#ff6b35',
+    color: '#ffffff',
     marginBottom: 4,
   },
   infoDescription: {
     fontSize: 13,
-    color: '#c0c0c0',
+    color: '#cccccc',
     lineHeight: 18,
   },
   emptyContainer: {
@@ -293,22 +293,22 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#fff',
+    color: '#ffffff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#999999',
   },
   highlightCard: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     marginHorizontal: 16,
     marginBottom: 20,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#0f3460',
+    borderColor: '#333333',
   },
   thumbnailContainer: {
     position: 'relative',
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   thumbnailPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#0f3460',
+    backgroundColor: '#222222',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -340,9 +340,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ffffff',
   },
   espnText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -352,7 +354,7 @@ const styles = StyleSheet.create({
   highlightTitle: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 8,
     lineHeight: 24,
   },
@@ -363,13 +365,13 @@ const styles = StyleSheet.create({
   },
   teamsText: {
     fontSize: 14,
-    color: '#ff6b35',
+    color: '#ffffff',
     fontWeight: '600',
     marginLeft: 6,
   },
   statusBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#0f3460',
+    backgroundColor: '#222222',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -377,7 +379,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#999999',
     fontWeight: '600',
   },
   metaRow: {
@@ -386,7 +388,7 @@ const styles = StyleSheet.create({
   },
   watchText: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#999999',
     marginLeft: 6,
     fontStyle: 'italic',
   },
@@ -396,26 +398,26 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#808080',
+    color: '#666666',
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 11,
-    color: '#606060',
+    color: '#444444',
     textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     paddingTop: 50,
-    backgroundColor: '#16213e',
+    backgroundColor: '#111111',
     borderBottomWidth: 1,
-    borderBottomColor: '#0f3460',
+    borderBottomColor: '#333333',
   },
   closeButton: {
     padding: 8,
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
   },
   browserButton: {
     padding: 8,
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   webViewLoading: {
     position: 'absolute',
@@ -443,17 +445,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#ffffff',
   },
   loadingSubtext: {
     marginTop: 8,
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#999999',
     textAlign: 'center',
     paddingHorizontal: 32,
   },
@@ -462,19 +464,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginTop: 24,
     marginBottom: 16,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 15,
-    color: '#c0c0c0',
+    color: '#cccccc',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
@@ -482,13 +484,13 @@ const styles = StyleSheet.create({
   browserOpenButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
   },
   browserOpenText: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
