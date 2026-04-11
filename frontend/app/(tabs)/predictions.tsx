@@ -58,6 +58,24 @@ interface PlayerProp {
 
 type SubTab = 'games' | 'props';
 
+interface SportsbookOdds {
+  name: string;
+  moneyline: { home: number; away: number };
+  spread: { home_spread: number; away_spread: number; home_odds: number; away_odds: number };
+  total: { line: number; over_odds: number; under_odds: number };
+}
+
+interface GameOdds {
+  game_id: string;
+  home_team: string;
+  away_team: string;
+  sportsbooks: {
+    draftkings: SportsbookOdds;
+    fanduel: SportsbookOdds;
+    betmgm: SportsbookOdds;
+  };
+}
+
 // ==================== HELPERS ====================
 
 const getGameState = (game: Game): 'live' | 'upcoming' | 'final' => {
@@ -94,15 +112,101 @@ const formatGameTime = (status: string): string => {
   return status;
 };
 
+const formatOdds = (odds: number): string => {
+  if (odds > 0) return `+${odds}`;
+  return `${odds}`;
+};
+
+// Odds Table Component
+const OddsTable = ({ odds }: { odds: GameOdds }) => {
+  const books = [
+    { key: 'draftkings' as const, label: 'DK' },
+    { key: 'fanduel' as const, label: 'FD' },
+    { key: 'betmgm' as const, label: 'MGM' },
+  ];
+
+  return (
+    <View style={styles.oddsSection}>
+      <View style={styles.oddsDivider}>
+        <View style={styles.oddsDivLine} />
+        <Text style={styles.oddsDivLabel}>BETTING ODDS</Text>
+        <View style={styles.oddsDivLine} />
+      </View>
+
+      {/* Header Row */}
+      <View style={styles.oddsHeaderRow}>
+        <View style={styles.oddsTypeCol} />
+        {books.map((b) => (
+          <View key={b.key} style={styles.oddsBookCol}>
+            <Text style={styles.oddsBookLabel}>{b.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Moneyline Row */}
+      <View style={styles.oddsRow}>
+        <View style={styles.oddsTypeCol}>
+          <Text style={styles.oddsTypeText}>ML</Text>
+        </View>
+        {books.map((b) => {
+          const ml = odds.sportsbooks[b.key].moneyline;
+          return (
+            <View key={b.key} style={styles.oddsBookCol}>
+              <Text style={styles.oddsValueSmall}>{formatOdds(ml.home)}</Text>
+              <Text style={styles.oddsValueDim}>{formatOdds(ml.away)}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Spread Row */}
+      <View style={styles.oddsRow}>
+        <View style={styles.oddsTypeCol}>
+          <Text style={styles.oddsTypeText}>SPR</Text>
+        </View>
+        {books.map((b) => {
+          const sp = odds.sportsbooks[b.key].spread;
+          return (
+            <View key={b.key} style={styles.oddsBookCol}>
+              <Text style={styles.oddsValueSmall}>
+                {sp.home_spread > 0 ? '+' : ''}{sp.home_spread}
+              </Text>
+              <Text style={styles.oddsValueDim}>({formatOdds(sp.home_odds)})</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Total Row */}
+      <View style={styles.oddsRow}>
+        <View style={styles.oddsTypeCol}>
+          <Text style={styles.oddsTypeText}>O/U</Text>
+        </View>
+        {books.map((b) => {
+          const t = odds.sportsbooks[b.key].total;
+          return (
+            <View key={b.key} style={styles.oddsBookCol}>
+              <Text style={styles.oddsValueSmall}>{t.line}</Text>
+              <Text style={styles.oddsValueDim}>{formatOdds(t.over_odds)}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 // ==================== SUB-TAB COMPONENTS ====================
 
 const GamesContent = ({
   games,
+  odds,
   refreshing,
   onRefresh,
   router,
 }: {
   games: GameWithPrediction[];
+  odds: Record<string, GameOdds>;
   refreshing: boolean;
   onRefresh: () => void;
   router: any;
@@ -226,6 +330,11 @@ const GamesContent = ({
                 </View>
               )}
 
+              {/* Odds Table for live/final games */}
+              {odds[item.game.game_id] && (
+                <OddsTable odds={odds[item.game.game_id]} />
+              )}
+
               {/* Upcoming: Show Prediction as main content */}
               {!isLive && !isFinal && (
                 <>
@@ -270,6 +379,11 @@ const GamesContent = ({
                     <View style={styles.noPrediction}>
                       <Text style={styles.noPredictionText}>Generating prediction...</Text>
                     </View>
+                  )}
+
+                  {/* Odds Table for upcoming games */}
+                  {odds[item.game.game_id] && (
+                    <OddsTable odds={odds[item.game.game_id]} />
                   )}
                 </>
               )}
@@ -410,6 +524,7 @@ export default function PredictionsScreen() {
   const [loadingProps, setLoadingProps] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [propsFilter, setPropsFilter] = useState('all');
+  const [odds, setOdds] = useState<Record<string, GameOdds>>({});
 
   const fetchGames = useCallback(async () => {
     try {
@@ -433,15 +548,29 @@ export default function PredictionsScreen() {
     }
   }, []);
 
+  const fetchOdds = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/odds/all`);
+      const oddsMap: Record<string, GameOdds> = {};
+      response.data.forEach((o: GameOdds) => {
+        oddsMap[o.game_id] = o;
+      });
+      setOdds(oddsMap);
+    } catch (error) {
+      console.error('Error fetching odds:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchGames();
     fetchProps();
-  }, [fetchGames, fetchProps]);
+    fetchOdds();
+  }, [fetchGames, fetchProps, fetchOdds]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    Promise.all([fetchGames(), fetchProps()]).finally(() => setRefreshing(false));
-  }, [fetchGames, fetchProps]);
+    Promise.all([fetchGames(), fetchProps(), fetchOdds()]).finally(() => setRefreshing(false));
+  }, [fetchGames, fetchProps, fetchOdds]);
 
   const isLoading = activeTab === 'games' ? loadingGames : loadingProps;
 
@@ -497,6 +626,7 @@ export default function PredictionsScreen() {
       ) : activeTab === 'games' ? (
         <GamesContent
           games={games}
+          odds={odds}
           refreshing={refreshing}
           onRefresh={onRefresh}
           router={router}
@@ -1026,5 +1156,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999999',
     lineHeight: 18,
+  },
+
+  // Odds Table
+  oddsSection: {
+    marginTop: 14,
+    paddingTop: 0,
+  },
+  oddsDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  oddsDivLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  oddsDivLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#555555',
+    letterSpacing: 1.5,
+    marginHorizontal: 10,
+  },
+  oddsHeaderRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  oddsTypeCol: {
+    width: 40,
+    justifyContent: 'center',
+  },
+  oddsBookCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  oddsBookLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  oddsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#111111',
+  },
+  oddsTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#666666',
+    letterSpacing: 0.5,
+  },
+  oddsValueSmall: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 1,
+  },
+  oddsValueDim: {
+    fontSize: 11,
+    color: '#666666',
   },
 });

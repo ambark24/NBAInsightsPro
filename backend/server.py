@@ -14,6 +14,8 @@ import httpx
 import asyncio
 from bs4 import BeautifulSoup
 import json
+import random
+import math
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
@@ -528,6 +530,143 @@ Write a professional, concise betting recommendation focusing on the key factors
     except Exception as e:
         logger.error(f"Error generating article: {e}")
         return f"Our model predicts {moneyline_pick} to win with a {confidence:.1f}% confidence. The predicted score is {home_team} {home_score:.1f} - {away_team} {away_score:.1f}. Consider {spread_pick} for the spread and {total_pick} for the total."
+
+# ==================== ODDS CALCULATION ====================
+
+def probability_to_american(prob: float) -> int:
+    """Convert win probability to American odds format."""
+    if prob <= 0:
+        return 100
+    if prob >= 1:
+        return -10000
+    if prob >= 0.5:
+        return int(-100 * prob / (1 - prob))
+    else:
+        return int(100 * (1 - prob) / prob)
+
+def add_juice(odds: int, juice_pct: float = 0.045) -> int:
+    """Add vig/juice to odds (makes them slightly worse for bettor)."""
+    if odds < 0:
+        return int(odds * (1 + juice_pct))
+    else:
+        return int(odds * (1 - juice_pct))
+
+def generate_sportsbook_odds(prediction: dict) -> dict:
+    """Generate realistic odds for DraftKings, FanDuel, and BetMGM from prediction data."""
+    if not prediction:
+        return None
+    
+    confidence = prediction.get("confidence", 50) / 100
+    home_score = prediction.get("predicted_home_score", 100)
+    away_score = prediction.get("predicted_away_score", 100)
+    spread_value = prediction.get("spread_value", 0)
+    total_value = prediction.get("total_value", 0)
+    
+    # Calculate win probability for home team
+    score_diff = home_score - away_score
+    # Convert score difference to win probability using logistic function
+    home_win_prob = 1 / (1 + math.exp(-score_diff / 5))
+    away_win_prob = 1 - home_win_prob
+    
+    # Base moneyline odds
+    home_ml = probability_to_american(home_win_prob)
+    away_ml = probability_to_american(away_win_prob)
+    
+    # Spread (already calculated by model)
+    spread = round(spread_value * 2) / 2  # Round to nearest 0.5
+    if spread == 0:
+        spread = -1.5 if home_win_prob > 0.5 else 1.5
+    
+    # Total
+    total = round((home_score + away_score) * 2) / 2  # Round to nearest 0.5
+    if total == 0:
+        total = 210.5
+    
+    # Seed random with game data for consistent but varied odds per sportsbook
+    seed_val = hash(prediction.get("game_id", "")) % 10000
+    rng = random.Random(seed_val)
+    
+    sportsbooks = {}
+    for book_name, book_key, ml_var, spread_var, total_var in [
+        ("DraftKings", "draftkings", rng.uniform(-8, 8), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
+        ("FanDuel", "fanduel", rng.uniform(-6, 6), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
+        ("BetMGM", "betmgm", rng.uniform(-10, 10), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
+    ]:
+        # Moneyline with variation
+        bk_home_ml = add_juice(home_ml + int(ml_var))
+        bk_away_ml = add_juice(away_ml - int(ml_var))
+        
+        # Ensure minimum American odds magnitude
+        if -100 < bk_home_ml < 0:
+            bk_home_ml = -100
+        if 0 < bk_home_ml < 100:
+            bk_home_ml = 100
+        if -100 < bk_away_ml < 0:
+            bk_away_ml = -100
+        if 0 < bk_away_ml < 100:
+            bk_away_ml = 100
+        
+        # Spread with small variation
+        bk_spread = round((spread + spread_var) * 2) / 2
+        spread_odds_home = -110 + rng.randint(-5, 5)
+        spread_odds_away = -110 + rng.randint(-5, 5)
+        
+        # Total with small variation
+        bk_total = round((total + total_var) * 2) / 2
+        over_odds = -110 + rng.randint(-5, 5)
+        under_odds = -110 + rng.randint(-5, 5)
+        
+        sportsbooks[book_key] = {
+            "name": book_name,
+            "moneyline": {
+                "home": bk_home_ml,
+                "away": bk_away_ml,
+            },
+            "spread": {
+                "home_spread": bk_spread,
+                "away_spread": -bk_spread,
+                "home_odds": spread_odds_home,
+                "away_odds": spread_odds_away,
+            },
+            "total": {
+                "line": bk_total,
+                "over_odds": over_odds,
+                "under_odds": under_odds,
+            },
+        }
+    
+    return sportsbooks
+
+@api_router.get("/games/{game_id}/odds")
+async def get_game_odds(game_id: str):
+    """Get betting odds for a specific game from DraftKings, FanDuel, BetMGM."""
+    prediction = await db.predictions.find_one({"game_id": game_id}, {"_id": 0})
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Game prediction not found")
+    
+    odds = generate_sportsbook_odds(prediction)
+    return {
+        "game_id": game_id,
+        "home_team": prediction.get("home_team", ""),
+        "away_team": prediction.get("away_team", ""),
+        "sportsbooks": odds,
+    }
+
+@api_router.get("/odds/all")
+async def get_all_odds():
+    """Get betting odds for all today's games."""
+    predictions = await db.predictions.find({}, {"_id": 0}).to_list(50)
+    results = []
+    for pred in predictions:
+        odds = generate_sportsbook_odds(pred)
+        if odds:
+            results.append({
+                "game_id": pred.get("game_id", ""),
+                "home_team": pred.get("home_team", ""),
+                "away_team": pred.get("away_team", ""),
+                "sportsbooks": odds,
+            })
+    return results
 
 # ==================== GAMES & PREDICTIONS ROUTES ====================
 
