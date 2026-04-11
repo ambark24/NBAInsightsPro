@@ -270,17 +270,28 @@ async def fetch_nba_games_today():
         games = []
         games_to_cache = []
         async with httpx.AsyncClient() as client:
-            # Fetch only today and tomorrow to avoid rate limits
-            for day_offset in [0, 1]:
+            # Fetch yesterday (for late-night live games), today, and tomorrow
+            for day_offset in [-1, 0, 1]:
                 date = (datetime.now() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
                 try:
-                    response = await client.get(
-                        "https://api.balldontlie.io/nba/v1/games",
-                        params={"dates[]": date},
-                        headers={"Authorization": nba_api_key},
-                        timeout=10.0
-                    )
-                    response.raise_for_status()
+                    # Retry logic for rate limits
+                    for attempt in range(3):
+                        response = await client.get(
+                            "https://api.balldontlie.io/nba/v1/games",
+                            params={"dates[]": date},
+                            headers={"Authorization": nba_api_key},
+                            timeout=10.0
+                        )
+                        if response.status_code == 429:
+                            logger.warning(f"Rate limited for {date}, waiting {2 + attempt * 2}s (attempt {attempt + 1}/3)")
+                            await asyncio.sleep(2 + attempt * 2)
+                            continue
+                        response.raise_for_status()
+                        break
+                    else:
+                        logger.error(f"Failed to fetch games for {date} after 3 retries")
+                        continue
+                    
                     data = response.json()
                     
                     for game in data.get("data", []):
@@ -300,8 +311,8 @@ async def fetch_nba_games_today():
                         cache_obj["cached_at"] = datetime.now(timezone.utc)
                         games_to_cache.append(cache_obj)
                     
-                    # Small delay to avoid rate limits
-                    await asyncio.sleep(0.5)
+                    # Longer delay between date fetches to avoid rate limits
+                    await asyncio.sleep(2)
                 except Exception as e:
                     logger.error(f"Error fetching games for {date}: {e}")
                     continue
