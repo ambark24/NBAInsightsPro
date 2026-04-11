@@ -255,8 +255,8 @@ async def fetch_nba_games_today():
             logger.error("NBA_API_KEY not found in environment")
             return []
         
-        # Check cache first - games cached for 1 hour
-        cache_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        # Check cache first - games cached for 5 minutes (short for live score updates)
+        cache_time = datetime.now(timezone.utc) - timedelta(minutes=5)
         cached_games = await db.games_cache.find(
             {"cached_at": {"$gte": cache_time}},
             {"_id": 0, "cached_at": 0}  # Exclude _id and cached_at

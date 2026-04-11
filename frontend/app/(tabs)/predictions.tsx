@@ -24,6 +24,8 @@ interface Game {
   away_team: string;
   date: string;
   status: string;
+  home_score: number;
+  away_score: number;
 }
 
 interface GamePrediction {
@@ -56,6 +58,42 @@ interface PlayerProp {
 
 type SubTab = 'games' | 'props';
 
+// ==================== HELPERS ====================
+
+const getGameState = (game: Game): 'live' | 'upcoming' | 'final' => {
+  const status = game.status?.toLowerCase() || '';
+  // Live game indicators from balldontlie API
+  if (
+    status.includes('qtr') ||
+    status.includes('quarter') ||
+    status.includes('half') ||
+    status.includes('ot') ||
+    status.includes('in progress') ||
+    status === 'halftime'
+  ) {
+    return 'live';
+  }
+  if (status === 'final' || status.includes('final')) {
+    return 'final';
+  }
+  // If scores are > 0 but status is a timestamp, it might be live
+  if ((game.home_score > 0 || game.away_score > 0) && !status.includes('final')) {
+    return 'live';
+  }
+  return 'upcoming';
+};
+
+const formatGameTime = (status: string): string => {
+  // If status is a datetime string, format it nicely
+  try {
+    const date = new Date(status);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  } catch {}
+  return status;
+};
+
 // ==================== SUB-TAB COMPONENTS ====================
 
 const GamesContent = ({
@@ -68,89 +106,181 @@ const GamesContent = ({
   refreshing: boolean;
   onRefresh: () => void;
   router: any;
-}) => (
-  <ScrollView
-    style={styles.scrollArea}
-    refreshControl={
-      <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
-    }
-    showsVerticalScrollIndicator={false}
-  >
-    <View style={styles.subHeader}>
-      <View style={styles.subHeaderDeco}>
-        <Ionicons name="basketball-outline" size={70} color="rgba(255,255,255,0.04)" />
-      </View>
-      <Text style={styles.subHeaderTitle}>Today's Games</Text>
-      <View style={styles.subHeaderAccent} />
-      <Text style={styles.subHeaderSubtitle}>{games.length} games with AI predictions</Text>
-    </View>
+}) => {
+  // Sort: live games first, then upcoming, then final
+  const sortedGames = [...games].sort((a, b) => {
+    const stateOrder = { live: 0, upcoming: 1, final: 2 };
+    return stateOrder[getGameState(a.game)] - stateOrder[getGameState(b.game)];
+  });
 
-    {games.length === 0 ? (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="basketball-outline" size={48} color="#333333" />
-        <Text style={styles.emptyText}>No games scheduled for today</Text>
-        <Text style={styles.emptySubtext}>Check back later for predictions</Text>
-      </View>
-    ) : (
-      games.map((item) => (
-        <TouchableOpacity
-          key={item.game.game_id}
-          style={styles.gameCard}
-          onPress={() => router.push(`/game-detail?id=${item.game.game_id}`)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.gameTeams}>
-            <View style={styles.teamRow}>
-              <Text style={styles.teamName}>{item.game.away_team}</Text>
-              {item.prediction && (
-                <Text style={styles.score}>{item.prediction.predicted_away_score.toFixed(1)}</Text>
-              )}
-            </View>
-            <Text style={styles.vs}>@</Text>
-            <View style={styles.teamRow}>
-              <Text style={styles.teamName}>{item.game.home_team}</Text>
-              {item.prediction && (
-                <Text style={styles.score}>{item.prediction.predicted_home_score.toFixed(1)}</Text>
-              )}
-            </View>
-          </View>
+  const liveCount = sortedGames.filter(g => getGameState(g.game) === 'live').length;
+  const upcomingCount = sortedGames.filter(g => getGameState(g.game) === 'upcoming').length;
 
-          {item.prediction ? (
-            <View style={styles.predictionInfo}>
-              <View style={styles.pickRow}>
-                <View style={styles.pickBadge}>
-                  <Text style={styles.pickLabel}>ML</Text>
-                  <Text style={styles.pickValue}>{item.prediction.moneyline_pick.split(' ')[0]}</Text>
-                </View>
-                <View style={styles.pickBadge}>
-                  <Text style={styles.pickLabel}>Spread</Text>
-                  <Text style={styles.pickValue}>{item.prediction.spread_pick.split(' ')[0]}</Text>
-                </View>
-                <View style={styles.pickBadge}>
-                  <Text style={styles.pickLabel}>Total</Text>
-                  <Text style={styles.pickValue}>{item.prediction.total_pick}</Text>
-                </View>
+  return (
+    <ScrollView
+      style={styles.scrollArea}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.subHeader}>
+        <View style={styles.subHeaderDeco}>
+          <Ionicons name="basketball-outline" size={70} color="rgba(255,255,255,0.04)" />
+        </View>
+        <Text style={styles.subHeaderTitle}>Today's Games</Text>
+        <View style={styles.subHeaderAccent} />
+        <Text style={styles.subHeaderSubtitle}>
+          {liveCount > 0 ? `${liveCount} live` : ''}{liveCount > 0 && upcomingCount > 0 ? ' · ' : ''}{upcomingCount > 0 ? `${upcomingCount} upcoming` : ''}{liveCount === 0 && upcomingCount === 0 ? `${games.length} games` : ''}
+        </Text>
+      </View>
+
+      {sortedGames.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="basketball-outline" size={48} color="#333333" />
+          <Text style={styles.emptyText}>No games scheduled for today</Text>
+          <Text style={styles.emptySubtext}>Check back later for predictions</Text>
+        </View>
+      ) : (
+        sortedGames.map((item) => {
+          const gameState = getGameState(item.game);
+          const isLive = gameState === 'live';
+          const isFinal = gameState === 'final';
+
+          return (
+            <TouchableOpacity
+              key={item.game.game_id}
+              style={[styles.gameCard, isLive && styles.gameCardLive]}
+              onPress={() => router.push(`/game-detail?id=${item.game.game_id}`)}
+              activeOpacity={0.7}
+            >
+              {/* Status Badge */}
+              <View style={styles.statusBadgeRow}>
+                {isLive ? (
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE GAME</Text>
+                  </View>
+                ) : isFinal ? (
+                  <View style={styles.finalBadge}>
+                    <Text style={styles.finalBadgeText}>FINAL</Text>
+                  </View>
+                ) : (
+                  <View style={styles.upcomingBadge}>
+                    <Ionicons name="time-outline" size={12} color="#888888" />
+                    <Text style={styles.upcomingBadgeText}>UPCOMING GAME</Text>
+                  </View>
+                )}
+                {!isLive && !isFinal && (
+                  <Text style={styles.gameTimeText}>{formatGameTime(item.game.status)}</Text>
+                )}
               </View>
-              <View style={styles.confidenceBar}>
-                <View
-                  style={[styles.confidenceFill, { width: `${item.prediction.confidence}%` }]}
-                />
-                <Text style={styles.confidenceText}>
-                  {item.prediction.confidence.toFixed(0)}% confidence
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.noPrediction}>
-              <Text style={styles.noPredictionText}>Generating prediction...</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      ))
-    )}
-    <View style={{ height: 24 }} />
-  </ScrollView>
-);
+
+              {/* Live/Final: Show ACTUAL Score */}
+              {(isLive || isFinal) && (
+                <View style={styles.actualScoreSection}>
+                  <View style={styles.scoreTeamRow}>
+                    <Text style={styles.scoreTeamName}>{item.game.away_team}</Text>
+                    <Text style={[styles.actualScore, isLive && styles.liveScore]}>{item.game.away_score}</Text>
+                  </View>
+                  <View style={styles.scoreTeamRow}>
+                    <Text style={styles.scoreTeamName}>{item.game.home_team}</Text>
+                    <Text style={[styles.actualScore, isLive && styles.liveScore]}>{item.game.home_score}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Live/Final: Prediction underneath actual score */}
+              {(isLive || isFinal) && item.prediction && (
+                <View style={styles.predictionUnderScore}>
+                  <View style={styles.predictionDivider}>
+                    <View style={styles.predDivLine} />
+                    <Text style={styles.predDivLabel}>AI PREDICTION</Text>
+                    <View style={styles.predDivLine} />
+                  </View>
+                  <View style={styles.predScoreRow}>
+                    <Text style={styles.predTeamSmall}>{item.game.away_team.split(' ').pop()}</Text>
+                    <Text style={styles.predScoreSmall}>{item.prediction.predicted_away_score.toFixed(1)}</Text>
+                    <Text style={styles.predDash}>-</Text>
+                    <Text style={styles.predScoreSmall}>{item.prediction.predicted_home_score.toFixed(1)}</Text>
+                    <Text style={styles.predTeamSmall}>{item.game.home_team.split(' ').pop()}</Text>
+                  </View>
+                  <View style={styles.pickRow}>
+                    <View style={styles.pickBadge}>
+                      <Text style={styles.pickLabel}>ML</Text>
+                      <Text style={styles.pickValue}>{item.prediction.moneyline_pick.split(' ').pop()}</Text>
+                    </View>
+                    <View style={styles.pickBadge}>
+                      <Text style={styles.pickLabel}>SPREAD</Text>
+                      <Text style={styles.pickValue}>{item.prediction.spread_pick.split(' ').pop()}</Text>
+                    </View>
+                    <View style={styles.pickBadge}>
+                      <Text style={styles.pickLabel}>TOTAL</Text>
+                      <Text style={styles.pickValue}>{item.prediction.total_pick}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.confidenceBar}>
+                    <View style={[styles.confidenceFill, { width: `${item.prediction.confidence}%` }]} />
+                    <Text style={styles.confidenceText}>{item.prediction.confidence.toFixed(0)}% confidence</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Upcoming: Show Prediction as main content */}
+              {!isLive && !isFinal && (
+                <>
+                  <View style={styles.gameTeams}>
+                    <View style={styles.teamRow}>
+                      <Text style={styles.teamName}>{item.game.away_team}</Text>
+                      {item.prediction && (
+                        <Text style={styles.score}>{item.prediction.predicted_away_score.toFixed(1)}</Text>
+                      )}
+                    </View>
+                    <Text style={styles.vs}>@</Text>
+                    <View style={styles.teamRow}>
+                      <Text style={styles.teamName}>{item.game.home_team}</Text>
+                      {item.prediction && (
+                        <Text style={styles.score}>{item.prediction.predicted_home_score.toFixed(1)}</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {item.prediction ? (
+                    <View style={styles.predictionInfo}>
+                      <View style={styles.pickRow}>
+                        <View style={styles.pickBadge}>
+                          <Text style={styles.pickLabel}>ML</Text>
+                          <Text style={styles.pickValue}>{item.prediction.moneyline_pick.split(' ')[0]}</Text>
+                        </View>
+                        <View style={styles.pickBadge}>
+                          <Text style={styles.pickLabel}>SPREAD</Text>
+                          <Text style={styles.pickValue}>{item.prediction.spread_pick.split(' ')[0]}</Text>
+                        </View>
+                        <View style={styles.pickBadge}>
+                          <Text style={styles.pickLabel}>TOTAL</Text>
+                          <Text style={styles.pickValue}>{item.prediction.total_pick}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.confidenceBar}>
+                        <View style={[styles.confidenceFill, { width: `${item.prediction.confidence}%` }]} />
+                        <Text style={styles.confidenceText}>{item.prediction.confidence.toFixed(0)}% confidence</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.noPrediction}>
+                      <Text style={styles.noPredictionText}>Generating prediction...</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </TouchableOpacity>
+          );
+        })
+      )}
+      <View style={{ height: 24 }} />
+    </ScrollView>
+  );
+};
 
 const PropsContent = ({
   props,
@@ -527,6 +657,145 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#1a1a1a',
+  },
+  gameCardLive: {
+    borderColor: '#ffffff',
+    borderWidth: 1,
+  },
+
+  // Status Badges
+  statusBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#000000',
+    marginRight: 6,
+  },
+  liveBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
+  },
+  finalBadge: {
+    backgroundColor: '#333333',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  finalBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  upcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  upcomingBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#888888',
+    letterSpacing: 0.8,
+    marginLeft: 4,
+  },
+  gameTimeText: {
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '600',
+  },
+
+  // Actual Score Section (Live/Final)
+  actualScoreSection: {
+    marginBottom: 4,
+  },
+  scoreTeamRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  scoreTeamName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+    flex: 1,
+  },
+  actualScore: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    minWidth: 50,
+    textAlign: 'right',
+  },
+  liveScore: {
+    color: '#ffffff',
+  },
+
+  // Prediction Under Score (Live/Final)
+  predictionUnderScore: {
+    marginTop: 12,
+    paddingTop: 0,
+  },
+  predictionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  predDivLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  predDivLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#555555',
+    letterSpacing: 1.5,
+    marginHorizontal: 10,
+  },
+  predScoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  predTeamSmall: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#777777',
+    width: 70,
+    textAlign: 'center',
+  },
+  predScoreSmall: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#999999',
+    marginHorizontal: 8,
+  },
+  predDash: {
+    fontSize: 14,
+    color: '#555555',
+    marginHorizontal: 4,
   },
   gameTeams: {
     marginBottom: 16,
