@@ -46,7 +46,7 @@ export default function LoginScreen() {
     >
       <View style={styles.overlay} />
       <View style={styles.content}>
-        <Text style={styles.title}>NBAInsightsPro</Text>
+        <Text style={styles.title}>Pro Ball Insights</Text>
         <Text style={styles.subtitle}>AI-Powered NBA Betting Predictions</Text>
         
         <View style={styles.features}>

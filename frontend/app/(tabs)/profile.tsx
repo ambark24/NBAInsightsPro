@@ -38,7 +38,7 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.infoCard}>
-          <Text style={styles.infoText}>NBAInsightsPro uses advanced XGBoost machine learning algorithms combined with real-time web data to generate accurate betting predictions.</Text>
+          <Text style={styles.infoText}>Pro Ball Insights uses advanced XGBoost machine learning algorithms combined with real-time web data to generate accurate betting predictions.</Text>
           <Text style={styles.infoText}>Our predictions analyze team statistics, recent performance, and contextual information to provide moneyline, spread, and total score recommendations.</Text>
         </View>
       </View>
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>NBAInsightsPro v1.0</Text>
+        <Text style={styles.footerText}>Pro Ball Insights v1.0</Text>
         <Text style={styles.footerText}>AI-Powered NBA Predictions</Text>
       </View>
     </ScrollView>

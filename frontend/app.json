@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NBAInsightsPro",
-    "slug": "nba-insights-pro",
+    "name": "Pro Ball Insights",
+    "slug": "pro-ball-insights",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

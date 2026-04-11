@@ -342,7 +342,7 @@ export default function HomeScreen() {
       <View style={styles.bottomBrand}>
         <View style={styles.brandRow}>
           <Ionicons name="basketball" size={20} color="#333333" />
-          <Text style={styles.brandText}>NBAInsightsPro</Text>
+          <Text style={styles.brandText}>Pro Ball Insights</Text>
           <Ionicons name="basketball" size={20} color="#333333" />
         </View>
         <Text style={styles.brandSub}>Powered by XGBoost ML & GPT Analysis</Text>

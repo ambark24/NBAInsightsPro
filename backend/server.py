@@ -143,7 +143,7 @@ async def get_current_user(
 @api_router.get("/")
 async def health_check():
     """Basic health check endpoint"""
-    return {"status": "healthy", "service": "NBA Insights Pro API", "timestamp": datetime.now(timezone.utc)}
+    return {"status": "healthy", "service": "Pro Ball Insights API", "timestamp": datetime.now(timezone.utc)}
 
 # ==================== AUTH ROUTES ====================
 
