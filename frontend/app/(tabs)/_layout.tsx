@@ -14,6 +14,10 @@ const tabBarIconHighlights = ({ color, size }: { color: string; size: number }) 
   <Ionicons name="play-circle" size={size} color={color} />
 );
 
+const tabBarIconMedia = ({ color, size }: { color: string; size: number }) => (
+  <Ionicons name="newspaper" size={size} color={color} />
+);
+
 const tabBarIconChat = ({ color, size }: { color: string; size: number }) => (
   <Ionicons name="chatbubbles" size={size} color={color} />
 );
@@ -73,6 +77,13 @@ export default function TabLayout() {
         options={{
           title: 'Highlights',
           tabBarIcon: tabBarIconHighlights,
+        }}
+      />
+      <Tabs.Screen
+        name="media"
+        options={{
+          title: 'Media',
+          tabBarIcon: tabBarIconMedia,
         }}
       />
       <Tabs.Screen
