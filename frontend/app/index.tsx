@@ -16,7 +16,6 @@ export default function LoginScreen() {
   }, [user, loading, router]);
 
   const handleLogin = () => {
-    // Get the actual current URL origin for OAuth redirect
     const redirectUrl = typeof window !== 'undefined' ? window.location.origin + '/' : '/';
     const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
     
@@ -40,9 +39,10 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={require('../assets/basketball-logo.png')}
+      source={require('../assets/basketball-bg.png')}
       style={styles.background}
-      resizeMode="contain"
+      resizeMode="cover"
+      imageStyle={styles.backgroundImage}
     >
       <View style={styles.overlay} />
       <View style={styles.content}>
@@ -50,10 +50,10 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>AI-Powered NBA Betting Predictions</Text>
         
         <View style={styles.features}>
-          <Text style={styles.feature}>📊 XGBoost ML Predictions</Text>
-          <Text style={styles.feature}>💰 Moneyline, Spread & Total</Text>
-          <Text style={styles.feature}>📝 AI Consensus Articles</Text>
-          <Text style={styles.feature}>💬 Community Chat</Text>
+          <Text style={styles.feature}>XGBoost ML Predictions</Text>
+          <Text style={styles.feature}>Moneyline, Spread & Total</Text>
+          <Text style={styles.feature}>AI Consensus Articles</Text>
+          <Text style={styles.feature}>Community Chat</Text>
         </View>
 
         <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
@@ -75,14 +75,20 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+    backgroundColor: '#000000',
+  },
+  backgroundImage: {
+    opacity: 0.15,
+    width: '100%',
+    height: '100%',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(26, 26, 46, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -96,19 +102,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 12,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 10,
+    letterSpacing: 2,
   },
   subtitle: {
     fontSize: 18,
-    color: '#fff',
+    color: '#cccccc',
     marginBottom: 60,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
   },
@@ -117,54 +124,54 @@ const styles = StyleSheet.create({
   },
   feature: {
     fontSize: 17,
-    color: '#fff',
+    color: '#ffffff',
     marginBottom: 16,
     textAlign: 'center',
     fontWeight: '500',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
   },
   guestButton: {
-    backgroundColor: 'rgba(255, 107, 53, 0.9)',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 40,
     paddingVertical: 18,
     borderRadius: 12,
     minWidth: 280,
     marginBottom: 20,
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   guestButtonText: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   loginButton: {
-    backgroundColor: 'rgba(66, 133, 244, 0.9)',
+    backgroundColor: 'transparent',
     paddingHorizontal: 40,
     paddingVertical: 18,
     borderRadius: 12,
     minWidth: 280,
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   loginButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   guestNote: {
     fontSize: 13,
-    color: '#fff',
+    color: '#999999',
     marginTop: 20,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
   loadingText: {
     fontSize: 18,
-    color: '#fff',
+    color: '#ffffff',
   },
 });
