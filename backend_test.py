@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Test configuration
-BASE_URL = "https://court-predictions.preview.emergentagent.com/api"
+BASE_URL = "https://resume-app-12.preview.emergentagent.com/api"
 SESSION_TOKEN = "test_session_1773473981643"
 
 class BackendTester:
