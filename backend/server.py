@@ -301,6 +301,8 @@ async def fetch_nba_games_today():
                             "game_id": str(game["id"]),
                             "home_team": game["home_team"]["full_name"],
                             "away_team": game["visitor_team"]["full_name"],
+                            "home_team_id": game["home_team"]["id"],
+                            "away_team_id": game["visitor_team"]["id"],
                             "date": game["date"],
                             "status": game["status"],
                             "home_score": game.get("home_team_score"),
@@ -330,120 +332,194 @@ async def fetch_nba_games_today():
         logger.error(f"Error fetching NBA games: {e}")
         return []
 
-async def fetch_team_stats(team_name: str):
-    """Fetch team statistics with realistic NBA values"""
-    import random
-    
-    # NBA teams average around 110-115 points per game
-    # Realistic ranges for 2025 NBA season
-    return {
-        "avg_points": random.uniform(108, 118),  # Modern NBA scoring (higher pace)
-        "avg_points_allowed": random.uniform(108, 118),  # Defensive rating
-        "win_percentage": random.uniform(0.35, 0.65),  # Most teams .350-.650
-        "recent_form": random.uniform(0.4, 0.6)  # Recent performance factor
-    }
+def get_current_nba_season() -> int:
+    """Return balldontlie season year (e.g. 2025 => 2025-26 season)."""
+    now = datetime.now()
+    return now.year if now.month >= 10 else now.year - 1
 
-# ==================== WEB SCRAPING SERVICE ====================
+# NBA league scoring baseline (2025-26 pace) used when a team has no games yet
+LEAGUE_AVG_PPG = 113.5
 
-async def search_team_news(team_name: str) -> str:
-    """Search for team news and context"""
+async def fetch_team_season_stats(team_id: int, team_name: str) -> Optional[Dict[str, Any]]:
+    """Compute REAL team season stats from actual game results (balldontlie games endpoint).
+
+    Returns averages for points scored/allowed, win %, and recent form derived
+    from this season's completed games. Cached for 6 hours.
+    """
     try:
-        # Simplified web search - in production, use a proper search API
-        search_query = f"{team_name} NBA recent news performance"
+        nba_api_key = os.getenv("NBA_API_KEY")
+        if not nba_api_key:
+            return None
+
+        # Cache (6h) - season stats change slowly
+        cache_time = datetime.now(timezone.utc) - timedelta(hours=6)
+        cached = await db.team_stats_cache.find_one(
+            {"team_id": team_id, "cached_at": {"$gte": cache_time}},
+            {"_id": 0}
+        )
+        if cached:
+            return cached["stats"]
+
+        season = get_current_nba_season()
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.google.com/search",
-                params={"q": search_query},
-                headers={"User-Agent": "Mozilla/5.0"},
-                timeout=5.0
-            )
-            
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # Extract some text snippets
-                snippets = []
-                for snippet in soup.find_all(['h3', 'span'], limit=5):
-                    text = snippet.get_text().strip()
-                    if text and len(text) > 20:
-                        snippets.append(text)
-                
-                return " ".join(snippets[:3]) if snippets else f"{team_name} is competing in tonight's game."
+            for attempt in range(3):
+                resp = await client.get(
+                    "https://api.balldontlie.io/nba/v1/games",
+                    params={"seasons[]": season, "team_ids[]": team_id, "per_page": 100},
+                    headers={"Authorization": nba_api_key},
+                    timeout=15.0
+                )
+                if resp.status_code == 429:
+                    await asyncio.sleep(2 + attempt * 2)
+                    continue
+                resp.raise_for_status()
+                break
             else:
-                return f"{team_name} is competing in tonight's game."
+                logger.warning(f"Rate limited fetching stats for team {team_id}")
+                return None
+
+            games = resp.json().get("data", [])
+
+        # Only completed games with valid scores
+        finals = [
+            g for g in games
+            if "final" in str(g.get("status", "")).lower()
+            and g.get("home_team_score") and g.get("visitor_team_score")
+        ]
+        finals.sort(key=lambda g: g.get("date", ""))
+
+        if not finals:
+            return None
+
+        scored, allowed, results = [], [], []
+        for g in finals:
+            is_home = g["home_team"]["id"] == team_id
+            team_score = g["home_team_score"] if is_home else g["visitor_team_score"]
+            opp_score = g["visitor_team_score"] if is_home else g["home_team_score"]
+            scored.append(team_score)
+            allowed.append(opp_score)
+            results.append(1 if team_score > opp_score else 0)
+
+        n = len(scored)
+        win_pct = sum(results) / n
+        last10 = results[-10:]
+        recent_form = sum(last10) / len(last10)
+
+        stats = {
+            "games_played": n,
+            "wins": sum(results),
+            "losses": n - sum(results),
+            "avg_points": round(sum(scored) / n, 1),
+            "avg_points_allowed": round(sum(allowed) / n, 1),
+            "win_percentage": round(win_pct, 3),
+            "recent_form": round(recent_form, 3),
+        }
+
+        await db.team_stats_cache.update_one(
+            {"team_id": team_id},
+            {"$set": {
+                "team_id": team_id,
+                "team_name": team_name,
+                "stats": stats,
+                "cached_at": datetime.now(timezone.utc)
+            }},
+            upsert=True
+        )
+        await asyncio.sleep(0.3)  # be gentle on rate limits
+        return stats
     except Exception as e:
-        logger.error(f"Error searching team news: {e}")
-        return f"{team_name} is competing in tonight's game."
+        logger.error(f"Error fetching team season stats for {team_name}: {e}")
+        return None
+
+def default_team_stats() -> Dict[str, Any]:
+    """League-average fallback when no completed games exist yet (season start)."""
+    return {
+        "games_played": 0,
+        "wins": 0,
+        "losses": 0,
+        "avg_points": LEAGUE_AVG_PPG,
+        "avg_points_allowed": LEAGUE_AVG_PPG,
+        "win_percentage": 0.5,
+        "recent_form": 0.5,
+    }
 
 # ==================== ML PREDICTION ENGINE ====================
 
 async def generate_predictions_for_game(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Generate predictions for a single game using XGBoost"""
+    """Generate predictions for a single game from REAL team season stats."""
     try:
-        # Fetch team stats
-        home_stats = await fetch_team_stats(game["home_team"])
-        away_stats = await fetch_team_stats(game["away_team"])
-        
-        # REALISTIC NBA SCORING - Direct approach
-        # NBA games average 110-115 points per team in 2025
-        import random
-        
-        # Use team's actual avg points as base (already 108-118 range from stats)
-        home_score = home_stats["avg_points"]
-        away_score = away_stats["avg_points"]
-        
-        # Add matchup adjustments (defensive ratings)
-        home_score += (115 - away_stats["avg_points_allowed"]) * 0.3
-        away_score += (115 - home_stats["avg_points_allowed"]) * 0.3
-        
-        # Home court advantage (+2-3 points)
-        home_score += 2.5
-        
-        # Recent form impact
-        home_score += (home_stats["recent_form"] - 0.5) * 8
-        away_score += (away_stats["recent_form"] - 0.5) * 8
-        
-        # Add game variance
-        home_score += random.uniform(-4, 4)
-        away_score += random.uniform(-4, 4)
-        
-        # Ensure realistic NBA range (95-125)
-        home_score = max(95, min(125, home_score))
-        away_score = max(95, min(125, away_score))
-        
-        # Calculate betting picks
+        # Fetch real season stats derived from actual game results
+        home_stats = await fetch_team_season_stats(game.get("home_team_id"), game["home_team"])
+        away_stats = await fetch_team_season_stats(game.get("away_team_id"), game["away_team"])
+
+        # Fall back to league averages if a team has no completed games yet
+        if not home_stats:
+            home_stats = default_team_stats()
+        if not away_stats:
+            away_stats = default_team_stats()
+
+        # ===== STATS-BASED SCORE PROJECTION (deterministic) =====
+        # Expected team score = blend of that team's offense and the opponent's defense
+        home_score = (home_stats["avg_points"] + away_stats["avg_points_allowed"]) / 2
+        away_score = (away_stats["avg_points"] + home_stats["avg_points_allowed"]) / 2
+
+        # Home court advantage (~2 pts, NBA historical)
+        home_score += 2.0
+
+        # Recent form adjustment (hot/cold teams, +/- up to ~3 pts)
+        home_score += (home_stats["recent_form"] - 0.5) * 6
+        away_score += (away_stats["recent_form"] - 0.5) * 6
+
+        # Keep within realistic NBA range
+        home_score = max(90.0, min(140.0, home_score))
+        away_score = max(90.0, min(140.0, away_score))
+
+        # Betting picks derived from the projection
         spread = home_score - away_score
         total = home_score + away_score
-        
-        moneyline_pick = game["home_team"] if home_score > away_score else game["away_team"]
+
+        moneyline_pick = game["home_team"] if home_score >= away_score else game["away_team"]
         spread_pick = f"{game['home_team']} {spread:.1f}" if spread > 0 else f"{game['away_team']} {abs(spread):.1f}"
-        total_pick = "Over" if total > 215 else "Under"
-        
-        # PROFESSIONAL CONFIDENCE ALGORITHM FOR GAMES
-        # Base confidence starts at 58% (professional betting standard)
-        base_confidence = 58.0
-        
-        # Factor 1: Spread size (larger spread = more confident)
-        # NBA spreads typically range from 0-20 points
-        spread_factor = min(abs(spread) / 12.0, 1.0) * 22  # Max +22%
-        
-        # Factor 2: Total variance from average (215 is NBA average total)
-        total_diff = abs(total - 215)
-        total_factor = min(total_diff / 20.0, 1.0) * 8  # Max +8%
-        
-        # Factor 3: Team strength differential
-        team_diff = abs(home_stats["win_percentage"] - away_stats["win_percentage"])
-        strength_factor = min(team_diff / 0.3, 1.0) * 7  # Max +7%
-        
-        # Calculate final confidence (58-95% range)
-        confidence = base_confidence + spread_factor + total_factor + strength_factor
-        confidence = min(confidence, 87.0)  # Cap at 87%
-        confidence = max(confidence, 55.0)  # Floor at 55%
-        
-        # Get team context
-        home_news = await search_team_news(game["home_team"])
-        away_news = await search_team_news(game["away_team"])
-        
-        # Generate consensus article with GPT
+        # League-average NBA total is ~227; over/under relative to that baseline
+        total_pick = "Over" if total > 227 else "Under"
+
+        # ===== CONFIDENCE FROM REAL SIGNALS =====
+        base_confidence = 55.0
+
+        # Projected margin (bigger edge = more confident)
+        margin_factor = min(abs(spread) / 12.0, 1.0) * 20  # max +20%
+
+        # Team strength differential (win % gap)
+        strength_diff = abs(home_stats["win_percentage"] - away_stats["win_percentage"])
+        strength_factor = min(strength_diff / 0.4, 1.0) * 15  # max +15%
+
+        # Recent form differential
+        form_diff = abs(home_stats["recent_form"] - away_stats["recent_form"])
+        form_factor = min(form_diff / 0.5, 1.0) * 6  # max +6%
+
+        # Sample size (more games played = more reliable)
+        min_gp = min(home_stats["games_played"], away_stats["games_played"])
+        sample_factor = min(min_gp / 20.0, 1.0) * 5  # max +5%
+
+        confidence = base_confidence + margin_factor + strength_factor + form_factor + sample_factor
+        confidence = min(confidence, 90.0)
+        confidence = max(confidence, 52.0)
+
+        # Real stat-based context for the analysis article
+        home_context = (
+            f"{game['home_team']} are {home_stats['wins']}-{home_stats['losses']} this season, "
+            f"averaging {home_stats['avg_points']} PPG and allowing {home_stats['avg_points_allowed']} PPG "
+            f"(recent form {int(home_stats['recent_form'] * 100)}% over last 10)."
+            if home_stats["games_played"] > 0 else f"{game['home_team']} have limited games played this season."
+        )
+        away_context = (
+            f"{game['away_team']} are {away_stats['wins']}-{away_stats['losses']} this season, "
+            f"averaging {away_stats['avg_points']} PPG and allowing {away_stats['avg_points_allowed']} PPG "
+            f"(recent form {int(away_stats['recent_form'] * 100)}% over last 10)."
+            if away_stats["games_played"] > 0 else f"{game['away_team']} have limited games played this season."
+        )
+
+        # Generate consensus article with GPT using real context
         article = await generate_consensus_article(
             game["home_team"],
             game["away_team"],
@@ -453,10 +529,10 @@ async def generate_predictions_for_game(game: Dict[str, Any]) -> Optional[Dict[s
             spread_pick,
             total_pick,
             confidence,
-            home_news,
-            away_news
+            home_context,
+            away_context
         )
-        
+
         prediction = {
             "prediction_id": f"pred_{uuid.uuid4().hex[:12]}",
             "game_id": game["game_id"],
@@ -473,13 +549,13 @@ async def generate_predictions_for_game(game: Dict[str, Any]) -> Optional[Dict[s
             "consensus_article": article,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-        
+
         # Store prediction (without _id)
         pred_copy = prediction.copy()
         await db.predictions.insert_one(pred_copy)
-        
+
         return prediction
-        
+
     except Exception as e:
         logger.error(f"Error generating prediction: {e}")
         return None
