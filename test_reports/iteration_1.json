@@ -1,0 +1,36 @@
+{
+  "summary": "Backend-only regression + security audit for Pro Ball Insights. Ran 17 pytest tests covering the three just-applied security fixes (SEC-002 admin gating, SEC-001 CORS hardening, chat length hardening) plus all requested public endpoint regressions and /auth/me unauth behavior. 17/17 PASSED. Also manually confirmed via curl that a cross-origin request with a foreign Origin gets ACAO=* WITHOUT any Access-Control-Allow-Credentials header, so SEC-001 fix is safe at the wire level.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_security_and_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is ~1275 lines — split into modules (auth, nba_data, predictions, odds, chat, admin) for maintainability (>700 line threshold).",
+    "ADMIN_EMAILS is loaded once at import time from env. If admins are ever added at runtime the process must be restarted — acceptable but worth documenting.",
+    "_last_refresh_ts is an in-process dict — cooldown won't be shared across multiple backend workers/replicas. Fine for single-instance deployments; move to Mongo/Redis for multi-instance.",
+    "get_chat_messages accepts unbounded `limit` query param — consider clamping (e.g. max 500) to avoid abuse.",
+    "post_chat_message logs guests as user_id='guest' — every guest post is indistinguishable in the DB; consider ip-hash / rate-limit for guests.",
+    "highlights endpoint hardcodes a 2026 thumbnail path (`.../nba_highlights_${id}.jpg`) — this may 404 for older/newer seasons."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (17/17)",
+    "frontend": "not tested (backend-only per request)"
+  },
+  "seed_data_creation": "One TEST_regression_<timestamp> chat message inserted per full run in db.chat_messages (via TestChatLengthHardening.test_normal_message_accepted_and_persisted). Also inserts one 500-char 'y' message. These are guest messages (user_id='guest') and are cheap; no cleanup implemented but they are prefixed / trivially identifiable.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public URL is at EXPO_PUBLIC_BACKEND_URL in /app/frontend/.env (NOT EXPO_BACKEND_URL). Reuse /app/backend/tests/test_security_and_regression.py — it runs the full security + regression suite in ~60s. NBA-related endpoints depend on external balldontlie/OddsAPI/ESPN and may be slow (first-hit generates predictions with the LLM); tests only assert 200 + list shape so they're resilient to empty offseason data. If admin auth is ever added, extend TestAdminRefreshPredictions with an authenticated-non-admin-403 case and a 429 cooldown case.",
+  "rca_of_issue": "N/A — this run was security-fix verification, not bug RCA. All three SEC fixes verified: (1) SEC-002 /api/admin/refresh-predictions correctly returns 401 with no auth, bogus bearer, and bogus cookie; ADMIN_EMAILS gate is in place so any authenticated non-admin would receive 403 (cannot fully exercise without real Google-auth session, but code path was reviewed at server.py:1229-1230). (2) SEC-001 CORS: with default empty CORS_ORIGINS env, server sets allow_origins=['*'] AND allow_credentials=False (server.py:1256-1262); wire-level curl confirms ACAO=* with no ACAC header on a foreign-origin request. (3) Chat hardening: ChatMessageCreate.message = Field(min_length=1, max_length=500) → 501 chars => 422, empty => 422, 500 chars => 200, normal => 200 + persisted."
+}

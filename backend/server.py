@@ -88,7 +88,7 @@ class ChatMessage(BaseModel):
     created_at: datetime
 
 class ChatMessageCreate(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=500)
 
 # ==================== AUTH HELPER ====================
 
@@ -1213,16 +1213,35 @@ async def get_nba_highlights():
 
 # ==================== ADMIN ROUTES ====================
 
+# Comma-separated admin emails (empty => endpoint locked to nobody)
+ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
+# Simple in-process cooldown to prevent LLM/API quota abuse
+_last_refresh_ts: Dict[str, datetime] = {}
+REFRESH_COOLDOWN_SECONDS = 60
+
+
 @api_router.post("/admin/refresh-predictions")
 async def refresh_predictions(request: Request, authorization: Optional[str] = Header(None)):
-    """Manually refresh predictions for today's games"""
+    """Manually refresh predictions for today's games (admin only, rate-limited)."""
     user = await get_current_user(request, authorization)
-    
+
+    # Role check: only allowlisted admin emails may trigger costly regeneration
+    if user.get("email", "").lower() not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Per-user cooldown to protect paid LLM/NBA API quota
+    now = datetime.now(timezone.utc)
+    last = _last_refresh_ts.get(user["user_id"])
+    if last and (now - last).total_seconds() < REFRESH_COOLDOWN_SECONDS:
+        wait = int(REFRESH_COOLDOWN_SECONDS - (now - last).total_seconds())
+        raise HTTPException(status_code=429, detail=f"Please wait {wait}s before refreshing again")
+    _last_refresh_ts[user["user_id"]] = now
+
     games = await fetch_nba_games_today()
-    
+
     for game in games:
         await generate_predictions_for_game(game)
-    
+
     return {"message": f"Refreshed predictions for {len(games)} games"}
 
 # ==================== INCLUDE ROUTER ====================
@@ -1230,10 +1249,22 @@ async def refresh_predictions(request: Request, authorization: Optional[str] = H
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS: never combine credentialed responses with a reflected/wildcard origin.
+# If CORS_ORIGINS is configured (comma-separated), allow those exact origins WITH
+# credentials. Otherwise fall back to wildcard WITHOUT credentials (the web app is
+# same-origin via ingress and native apps don't enforce CORS, so auth still works).
+_cors_env = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_env:
+    _allowed_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
+    _allow_credentials = True
+else:
+    _allowed_origins = ["*"]
+    _allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
+    allow_credentials=_allow_credentials,
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
