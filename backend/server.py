@@ -531,142 +531,172 @@ Write a professional, concise betting recommendation focusing on the key factors
         logger.error(f"Error generating article: {e}")
         return f"Our model predicts {moneyline_pick} to win with a {confidence:.1f}% confidence. The predicted score is {home_team} {home_score:.1f} - {away_team} {away_score:.1f}. Consider {spread_pick} for the spread and {total_pick} for the total."
 
-# ==================== ODDS CALCULATION ====================
+# ==================== REAL ODDS FROM THE ODDS API ====================
 
-def probability_to_american(prob: float) -> int:
-    """Convert win probability to American odds format."""
-    if prob <= 0:
-        return 100
-    if prob >= 1:
-        return -10000
-    if prob >= 0.5:
-        return int(-100 * prob / (1 - prob))
+def decimal_to_american(decimal_odds: float) -> int:
+    """Convert decimal odds to American format."""
+    if decimal_odds >= 2.0:
+        return int(round((decimal_odds - 1) * 100))
     else:
-        return int(100 * (1 - prob) / prob)
+        return int(round(-100 / (decimal_odds - 1)))
 
-def add_juice(odds: int, juice_pct: float = 0.045) -> int:
-    """Add vig/juice to odds (makes them slightly worse for bettor)."""
-    if odds < 0:
-        return int(odds * (1 + juice_pct))
-    else:
-        return int(odds * (1 - juice_pct))
+async def fetch_real_odds() -> list:
+    """Fetch real betting odds from The Odds API for DraftKings, FanDuel, BetMGM."""
+    odds_api_key = os.getenv("ODDS_API_KEY", "")
+    if not odds_api_key:
+        logger.warning("No ODDS_API_KEY set, odds will be empty")
+        return []
+    
+    # Check cache first (10 min cache to preserve API quota)
+    cache_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+    cached = await db.odds_cache.find_one({"cached_at": {"$gte": cache_time}})
+    if cached:
+        return cached.get("odds_data", [])
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.the-odds-api.com/v4/sports/basketball_nba/odds/",
+                params={
+                    "apiKey": odds_api_key,
+                    "regions": "us",
+                    "markets": "h2h,spreads,totals",
+                    "bookmakers": "draftkings,fanduel,betmgm",
+                    "oddsFormat": "decimal",
+                },
+                timeout=15.0,
+            )
+            response.raise_for_status()
+            raw_odds = response.json()
+            
+            # Remaining quota
+            remaining = response.headers.get("x-requests-remaining", "?")
+            logger.info(f"Odds API: fetched {len(raw_odds)} games, {remaining} requests remaining")
+            
+            # Transform to our format
+            odds_data = []
+            for game in raw_odds:
+                game_odds = {
+                    "home_team": game["home_team"],
+                    "away_team": game["away_team"],
+                    "commence_time": game["commence_time"],
+                    "sportsbooks": {},
+                }
+                
+                for bookmaker in game.get("bookmakers", []):
+                    bk_key = bookmaker["key"]
+                    bk_data = {
+                        "name": {"draftkings": "DraftKings", "fanduel": "FanDuel", "betmgm": "BetMGM"}.get(bk_key, bk_key),
+                        "moneyline": {"home": 0, "away": 0},
+                        "spread": {"home_spread": 0, "away_spread": 0, "home_odds": -110, "away_odds": -110},
+                        "total": {"line": 0, "over_odds": -110, "under_odds": -110},
+                    }
+                    
+                    for market in bookmaker.get("markets", []):
+                        if market["key"] == "h2h":
+                            for outcome in market["outcomes"]:
+                                american = decimal_to_american(outcome["price"])
+                                if outcome["name"] == game["home_team"]:
+                                    bk_data["moneyline"]["home"] = american
+                                else:
+                                    bk_data["moneyline"]["away"] = american
+                        
+                        elif market["key"] == "spreads":
+                            for outcome in market["outcomes"]:
+                                american = decimal_to_american(outcome["price"])
+                                point = outcome.get("point", 0)
+                                if outcome["name"] == game["home_team"]:
+                                    bk_data["spread"]["home_spread"] = point
+                                    bk_data["spread"]["home_odds"] = american
+                                else:
+                                    bk_data["spread"]["away_spread"] = point
+                                    bk_data["spread"]["away_odds"] = american
+                        
+                        elif market["key"] == "totals":
+                            for outcome in market["outcomes"]:
+                                american = decimal_to_american(outcome["price"])
+                                point = outcome.get("point", 0)
+                                if outcome["name"] == "Over":
+                                    bk_data["total"]["line"] = point
+                                    bk_data["total"]["over_odds"] = american
+                                else:
+                                    bk_data["total"]["under_odds"] = american
+                    
+                    game_odds["sportsbooks"][bk_key] = bk_data
+                
+                odds_data.append(game_odds)
+            
+            # Cache
+            await db.odds_cache.delete_many({})
+            await db.odds_cache.insert_one({
+                "cached_at": datetime.now(timezone.utc),
+                "odds_data": odds_data,
+            })
+            
+            return odds_data
+            
+    except Exception as e:
+        logger.error(f"Error fetching odds: {e}")
+        # Return cached if available
+        any_cache = await db.odds_cache.find_one({}, sort=[("cached_at", -1)])
+        if any_cache:
+            return any_cache.get("odds_data", [])
+        return []
 
-def generate_sportsbook_odds(prediction: dict) -> dict:
-    """Generate realistic odds for DraftKings, FanDuel, and BetMGM from prediction data."""
-    if not prediction:
-        return None
-    
-    confidence = prediction.get("confidence", 50) / 100
-    home_score = prediction.get("predicted_home_score", 100)
-    away_score = prediction.get("predicted_away_score", 100)
-    spread_value = prediction.get("spread_value", 0)
-    total_value = prediction.get("total_value", 0)
-    
-    # Calculate win probability for home team
-    score_diff = home_score - away_score
-    # Convert score difference to win probability using logistic function
-    home_win_prob = 1 / (1 + math.exp(-score_diff / 5))
-    away_win_prob = 1 - home_win_prob
-    
-    # Base moneyline odds
-    home_ml = probability_to_american(home_win_prob)
-    away_ml = probability_to_american(away_win_prob)
-    
-    # Spread (already calculated by model)
-    spread = round(spread_value * 2) / 2  # Round to nearest 0.5
-    if spread == 0:
-        spread = -1.5 if home_win_prob > 0.5 else 1.5
-    
-    # Total
-    total = round((home_score + away_score) * 2) / 2  # Round to nearest 0.5
-    if total == 0:
-        total = 210.5
-    
-    # Seed random with game data for consistent but varied odds per sportsbook
-    seed_val = hash(prediction.get("game_id", "")) % 10000
-    rng = random.Random(seed_val)
-    
-    sportsbooks = {}
-    for book_name, book_key, ml_var, spread_var, total_var in [
-        ("DraftKings", "draftkings", rng.uniform(-8, 8), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
-        ("FanDuel", "fanduel", rng.uniform(-6, 6), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
-        ("BetMGM", "betmgm", rng.uniform(-10, 10), rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)),
-    ]:
-        # Moneyline with variation
-        bk_home_ml = add_juice(home_ml + int(ml_var))
-        bk_away_ml = add_juice(away_ml - int(ml_var))
-        
-        # Ensure minimum American odds magnitude
-        if -100 < bk_home_ml < 0:
-            bk_home_ml = -100
-        if 0 < bk_home_ml < 100:
-            bk_home_ml = 100
-        if -100 < bk_away_ml < 0:
-            bk_away_ml = -100
-        if 0 < bk_away_ml < 100:
-            bk_away_ml = 100
-        
-        # Spread with small variation
-        bk_spread = round((spread + spread_var) * 2) / 2
-        spread_odds_home = -110 + rng.randint(-5, 5)
-        spread_odds_away = -110 + rng.randint(-5, 5)
-        
-        # Total with small variation
-        bk_total = round((total + total_var) * 2) / 2
-        over_odds = -110 + rng.randint(-5, 5)
-        under_odds = -110 + rng.randint(-5, 5)
-        
-        sportsbooks[book_key] = {
-            "name": book_name,
-            "moneyline": {
-                "home": bk_home_ml,
-                "away": bk_away_ml,
-            },
-            "spread": {
-                "home_spread": bk_spread,
-                "away_spread": -bk_spread,
-                "home_odds": spread_odds_home,
-                "away_odds": spread_odds_away,
-            },
-            "total": {
-                "line": bk_total,
-                "over_odds": over_odds,
-                "under_odds": under_odds,
-            },
-        }
-    
-    return sportsbooks
-
-@api_router.get("/games/{game_id}/odds")
-async def get_game_odds(game_id: str):
-    """Get betting odds for a specific game from DraftKings, FanDuel, BetMGM."""
-    prediction = await db.predictions.find_one({"game_id": game_id}, {"_id": 0})
-    if not prediction:
-        raise HTTPException(status_code=404, detail="Game prediction not found")
-    
-    odds = generate_sportsbook_odds(prediction)
-    return {
-        "game_id": game_id,
-        "home_team": prediction.get("home_team", ""),
-        "away_team": prediction.get("away_team", ""),
-        "sportsbooks": odds,
-    }
+def match_odds_to_game(game_home: str, game_away: str, odds_list: list) -> dict:
+    """Match odds data to a game by fuzzy team name matching."""
+    for odds_game in odds_list:
+        odds_home = odds_game["home_team"].lower()
+        odds_away = odds_game["away_team"].lower()
+        # Match by last word of team name (e.g., "Celtics", "Lakers")
+        game_home_short = game_home.split()[-1].lower()
+        game_away_short = game_away.split()[-1].lower()
+        if game_home_short in odds_home and game_away_short in odds_away:
+            return odds_game.get("sportsbooks", {})
+    return {}
 
 @api_router.get("/odds/all")
 async def get_all_odds():
-    """Get betting odds for all today's games."""
-    predictions = await db.predictions.find({}, {"_id": 0}).to_list(50)
+    """Get real betting odds for all NBA games from DraftKings, FanDuel, BetMGM."""
+    odds_list = await fetch_real_odds()
+    
+    # Match with our cached games
+    cached_games = await db.games_cache.find({}, {"_id": 0}).to_list(50)
+    
     results = []
-    for pred in predictions:
-        odds = generate_sportsbook_odds(pred)
-        if odds:
+    for game in cached_games:
+        game_id = game.get("game_id", "")
+        home = game.get("home_team", "")
+        away = game.get("away_team", "")
+        
+        sportsbooks = match_odds_to_game(home, away, odds_list)
+        
+        if sportsbooks:
             results.append({
-                "game_id": pred.get("game_id", ""),
-                "home_team": pred.get("home_team", ""),
-                "away_team": pred.get("away_team", ""),
-                "sportsbooks": odds,
+                "game_id": game_id,
+                "home_team": home,
+                "away_team": away,
+                "sportsbooks": sportsbooks,
             })
+    
     return results
+
+@api_router.get("/games/{game_id}/odds")
+async def get_game_odds(game_id: str):
+    """Get real betting odds for a specific game."""
+    game = await db.games_cache.find_one({"game_id": game_id}, {"_id": 0})
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    odds_list = await fetch_real_odds()
+    sportsbooks = match_odds_to_game(game.get("home_team", ""), game.get("away_team", ""), odds_list)
+    
+    return {
+        "game_id": game_id,
+        "home_team": game.get("home_team", ""),
+        "away_team": game.get("away_team", ""),
+        "sportsbooks": sportsbooks,
+    }
 
 # ==================== GAMES & PREDICTIONS ROUTES ====================
 
