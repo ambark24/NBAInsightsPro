@@ -1211,6 +1211,83 @@ async def get_nba_highlights():
         logger.error(f"Error fetching NBA highlights: {e}")
         return []
 
+# ==================== NBA NEWS ====================
+
+@api_router.get("/news")
+async def get_nba_news():
+    """Get latest NBA news & trade articles from CBS Sports RSS (free) - PUBLIC ACCESS"""
+    try:
+        # 30-minute cache
+        cache_time = datetime.now(timezone.utc) - timedelta(minutes=30)
+        cached = await db.news_cache.find(
+            {"cached_at": {"$gte": cache_time}},
+            {"_id": 0, "cached_at": 0}
+        ).to_list(50)
+        if cached:
+            logger.info(f"Returning {len(cached)} cached news articles")
+            return cached
+
+        import xml.etree.ElementTree as ET
+        import hashlib
+        import re
+
+        articles = []
+        ns = {"media": "http://search.yahoo.com/mrss/"}
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            resp = await client.get(
+                "https://www.cbssports.com/rss/headlines/nba/",
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            root = ET.fromstring(resp.content)
+
+            for item in root.findall(".//item"):
+                title = (item.findtext("title") or "").strip()
+                link = (item.findtext("link") or "").strip()
+                desc = (item.findtext("description") or "").strip()
+                # Strip any HTML tags from description
+                desc = re.sub(r"<[^>]+>", "", desc).strip()
+                pub = (item.findtext("pubDate") or "").strip()
+
+                image = None
+                enc = item.find("enclosure")
+                if enc is not None and enc.get("url"):
+                    image = enc.get("url")
+                if not image:
+                    media = item.find("media:content", ns) or item.find("media:thumbnail", ns)
+                    if media is not None:
+                        image = media.get("url")
+
+                if not title or not link:
+                    continue
+
+                articles.append({
+                    "news_id": f"news_{hashlib.md5(link.encode()).hexdigest()[:12]}",
+                    "title": title,
+                    "description": desc,
+                    "url": link,
+                    "image": image,
+                    "published": pub,
+                    "source": "CBS Sports",
+                })
+
+        articles = articles[:30]
+
+        if articles:
+            with_cache = [{**a, "cached_at": datetime.now(timezone.utc)} for a in articles]
+            await db.news_cache.delete_many({})
+            await db.news_cache.insert_many(with_cache)
+
+        logger.info(f"Fetched {len(articles)} NBA news articles")
+        return articles
+
+    except Exception as e:
+        logger.error(f"Error fetching NBA news: {e}")
+        # Serve any stale cache if available
+        stale = await db.news_cache.find({}, {"_id": 0, "cached_at": 0}).to_list(50)
+        return stale
+
 # ==================== ADMIN ROUTES ====================
 
 # Comma-separated admin emails (empty => endpoint locked to nobody)

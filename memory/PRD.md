@@ -9,6 +9,7 @@ Tabs: Home, Predictions, Media, Chat, Profile.
 - The Odds API — real DraftKings/FanDuel/BetMGM odds.
 - Emergent LLM (GPT-5.2) — AI consensus analysis articles.
 - ESPN scoreboard — highlights.
+- CBS Sports NBA RSS — free NBA news & trade articles (no key). Endpoint GET /api/news (30-min cache).
 
 ## Prediction Model (stats-based, real)
 - Team season stats are computed from REAL completed game results this season via the

@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { WebView } from 'react-native-webview';
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const { width } = Dimensions.get('window');
 
-type SubTab = 'highlights' | 'twitter' | 'instagram';
+type SubTab = 'highlights' | 'news' | 'twitter' | 'instagram';
 
 const NBA_TWITTER_URL = 'https://x.com/NBA';
 const NBA_INSTAGRAM_URL = 'https://www.instagram.com/nba/';
@@ -38,6 +39,106 @@ interface Highlight {
   duration?: number;
   status?: string;
 }
+
+interface NewsArticle {
+  news_id: string;
+  title: string;
+  description: string;
+  url: string;
+  image: string | null;
+  published: string;
+  source: string;
+}
+
+// ==================== NEWS CONTENT ====================
+
+const formatNewsDate = (published: string): string => {
+  try {
+    const d = new Date(published);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHrs < 1) return 'Just now';
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
+};
+
+const NewsContent = ({
+  news,
+  refreshing,
+  onRefresh,
+}: {
+  news: NewsArticle[];
+  refreshing: boolean;
+  onRefresh: () => void;
+}) => {
+  const openArticle = (url: string) => {
+    if (url) Linking.openURL(url);
+  };
+
+  return (
+    <ScrollView
+      style={styles.scrollArea}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      {news.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="newspaper-outline" size={48} color="#333333" />
+          <Text style={styles.emptyText}>No news available</Text>
+          <Text style={styles.emptySubtext}>Pull down to refresh</Text>
+        </View>
+      ) : (
+        news.map((article) => (
+          <TouchableOpacity
+            key={article.news_id}
+            style={styles.newsCard}
+            onPress={() => openArticle(article.url)}
+            activeOpacity={0.7}
+          >
+            {article.image ? (
+              <Image source={{ uri: article.image }} style={styles.newsImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.newsImagePlaceholder}>
+                <Ionicons name="newspaper" size={36} color="#333333" />
+              </View>
+            )}
+            <View style={styles.newsInfo}>
+              <View style={styles.newsSourceRow}>
+                <View style={styles.newsSourceBadge}>
+                  <Text style={styles.newsSourceText}>{article.source}</Text>
+                </View>
+                {!!formatNewsDate(article.published) && (
+                  <Text style={styles.newsDate}>{formatNewsDate(article.published)}</Text>
+                )}
+              </View>
+              <Text style={styles.newsTitle} numberOfLines={3}>
+                {article.title}
+              </Text>
+              {!!article.description && (
+                <Text style={styles.newsDesc} numberOfLines={2}>
+                  {article.description}
+                </Text>
+              )}
+              <View style={styles.newsReadRow}>
+                <Text style={styles.newsReadText}>Read article</Text>
+                <Ionicons name="open-outline" size={13} color="#555555" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))
+      )}
+      <View style={{ height: 24 }} />
+    </ScrollView>
+  );
+};
 
 // ==================== HIGHLIGHTS CONTENT ====================
 
@@ -330,6 +431,8 @@ export default function MediaScreen() {
   const [activeTab, setActiveTab] = useState<SubTab>('highlights');
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [loadingHighlights, setLoadingHighlights] = useState(true);
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHighlights = async () => {
@@ -344,16 +447,35 @@ export default function MediaScreen() {
     }
   };
 
+  const fetchNews = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/news`);
+      setNews(response.data);
+    } catch (error) {
+      console.error('Error fetching news:', error);
+    } finally {
+      setLoadingNews(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     fetchHighlights();
+    fetchNews();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchHighlights();
+    if (activeTab === 'news') {
+      fetchNews();
+    } else {
+      fetchHighlights();
+    }
   };
 
-  const isLoading = activeTab === 'highlights' && loadingHighlights;
+  const isLoading =
+    (activeTab === 'highlights' && loadingHighlights) ||
+    (activeTab === 'news' && loadingNews);
 
   return (
     <View style={styles.container}>
@@ -364,10 +486,10 @@ export default function MediaScreen() {
         </View>
         <Text style={styles.headerTitle}>Media</Text>
         <View style={styles.headerAccent} />
-        <Text style={styles.headerTagline}>Highlights & Official NBA Social</Text>
+        <Text style={styles.headerTagline}>Highlights, News & Official NBA Social</Text>
       </View>
 
-      {/* 3-way Segmented Control */}
+      {/* 4-way Segmented Control */}
       <View style={styles.segmentedControl}>
         <TouchableOpacity
           style={[styles.segmentButton, activeTab === 'highlights' && styles.segmentButtonActive]}
@@ -381,6 +503,20 @@ export default function MediaScreen() {
           />
           <Text style={[styles.segmentText, activeTab === 'highlights' && styles.segmentTextActive]}>
             Highlights
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentButton, activeTab === 'news' && styles.segmentButtonActive]}
+          onPress={() => setActiveTab('news')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="newspaper"
+            size={15}
+            color={activeTab === 'news' ? '#000000' : '#666666'}
+          />
+          <Text style={[styles.segmentText, activeTab === 'news' && styles.segmentTextActive]}>
+            News
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -421,6 +557,12 @@ export default function MediaScreen() {
       ) : activeTab === 'highlights' ? (
         <HighlightsContent
           highlights={highlights}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        />
+      ) : activeTab === 'news' ? (
+        <NewsContent
+          news={news}
           refreshing={refreshing}
           onRefresh={onRefresh}
         />
@@ -499,16 +641,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 11,
+    paddingHorizontal: 2,
     borderRadius: 10,
   },
   segmentButtonActive: {
     backgroundColor: '#ffffff',
   },
   segmentText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#666666',
-    marginLeft: 5,
+    marginLeft: 4,
   },
   segmentTextActive: {
     color: '#000000',
@@ -651,6 +794,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555555',
     marginLeft: 6,
+  },
+
+  // News Cards
+  newsCard: {
+    backgroundColor: '#0a0a0a',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+  },
+  newsImage: {
+    width: '100%',
+    height: 170,
+    backgroundColor: '#111111',
+  },
+  newsImagePlaceholder: {
+    width: '100%',
+    height: 170,
+    backgroundColor: '#111111',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  newsInfo: {
+    padding: 14,
+  },
+  newsSourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  newsSourceBadge: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  newsSourceText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 0.5,
+  },
+  newsDate: {
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '600',
+  },
+  newsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+  newsDesc: {
+    fontSize: 13,
+    color: '#999999',
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  newsReadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  newsReadText: {
+    fontSize: 12,
+    color: '#555555',
+    fontWeight: '600',
+    marginRight: 5,
   },
 
   // Video Modal
