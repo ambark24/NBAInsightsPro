@@ -20,7 +20,7 @@ import { WebView } from 'react-native-webview';
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const { width } = Dimensions.get('window');
 
-type SubTab = 'highlights' | 'news' | 'twitter' | 'instagram';
+type SubTab = 'highlights' | 'articles' | 'news' | 'twitter' | 'instagram';
 
 const NBA_TWITTER_URL = 'https://x.com/NBA';
 const NBA_INSTAGRAM_URL = 'https://www.instagram.com/nba/';
@@ -46,6 +46,19 @@ interface NewsArticle {
   description: string;
   url: string;
   image: string | null;
+  published: string;
+  source: string;
+}
+
+interface AIArticle {
+  article_id: string;
+  game_id: string;
+  title: string;
+  body: string;
+  moneyline_pick?: string;
+  spread_pick?: string;
+  total_pick?: string;
+  confidence?: number;
   published: string;
   source: string;
 }
@@ -134,6 +147,90 @@ const NewsContent = ({
             </View>
           </TouchableOpacity>
         ))
+      )}
+      <View style={{ height: 24 }} />
+    </ScrollView>
+  );
+};
+
+// ==================== AI ARTICLES CONTENT ====================
+
+const ArticlesContent = ({
+  articles,
+  refreshing,
+  onRefresh,
+}: {
+  articles: AIArticle[];
+  refreshing: boolean;
+  onRefresh: () => void;
+}) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <ScrollView
+      style={styles.scrollArea}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      {articles.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-text-outline" size={48} color="#333333" />
+          <Text style={styles.emptyText}>No articles yet</Text>
+          <Text style={styles.emptySubtext}>Game analysis appears once predictions are generated</Text>
+        </View>
+      ) : (
+        articles.map((a) => {
+          const expanded = expandedId === a.article_id;
+          return (
+            <TouchableOpacity
+              key={a.article_id}
+              style={styles.newsCard}
+              onPress={() => setExpandedId(expanded ? null : a.article_id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.newsInfo}>
+                <View style={styles.newsSourceRow}>
+                  <View style={styles.newsSourceBadge}>
+                    <Text style={styles.newsSourceText}>AI ANALYSIS</Text>
+                  </View>
+                  {!!formatNewsDate(a.published) && (
+                    <Text style={styles.newsDate}>{formatNewsDate(a.published)}</Text>
+                  )}
+                </View>
+                <Text style={styles.newsTitle}>{a.title}</Text>
+                <Text style={styles.newsDesc} numberOfLines={expanded ? undefined : 3}>
+                  {a.body}
+                </Text>
+                {expanded && (
+                  <View style={styles.articlePicksRow}>
+                    {!!a.moneyline_pick && (
+                      <Text style={styles.articlePick}>ML: {a.moneyline_pick}</Text>
+                    )}
+                    {!!a.spread_pick && (
+                      <Text style={styles.articlePick}>Spread: {a.spread_pick}</Text>
+                    )}
+                    {!!a.total_pick && (
+                      <Text style={styles.articlePick}>Total: {a.total_pick}</Text>
+                    )}
+                    {a.confidence != null && (
+                      <Text style={styles.articlePick}>{a.confidence}% confidence</Text>
+                    )}
+                  </View>
+                )}
+                <View style={styles.newsReadRow}>
+                  <Text style={styles.newsReadText}>{expanded ? 'Show less' : 'Read more'}</Text>
+                  <Ionicons
+                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                    size={13}
+                    color="#555555"
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })
       )}
       <View style={{ height: 24 }} />
     </ScrollView>
@@ -433,6 +530,8 @@ export default function MediaScreen() {
   const [loadingHighlights, setLoadingHighlights] = useState(true);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
+  const [articles, setArticles] = useState<AIArticle[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHighlights = async () => {
@@ -459,8 +558,21 @@ export default function MediaScreen() {
     }
   };
 
+  const fetchArticles = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/articles`);
+      setArticles(response.data);
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+    } finally {
+      setLoadingArticles(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     fetchHighlights();
+    fetchArticles();
     fetchNews();
   }, []);
 
@@ -468,6 +580,8 @@ export default function MediaScreen() {
     setRefreshing(true);
     if (activeTab === 'news') {
       fetchNews();
+    } else if (activeTab === 'articles') {
+      fetchArticles();
     } else {
       fetchHighlights();
     }
@@ -475,6 +589,7 @@ export default function MediaScreen() {
 
   const isLoading =
     (activeTab === 'highlights' && loadingHighlights) ||
+    (activeTab === 'articles' && loadingArticles) ||
     (activeTab === 'news' && loadingNews);
 
   return (
@@ -486,10 +601,10 @@ export default function MediaScreen() {
         </View>
         <Text style={styles.headerTitle}>Media</Text>
         <View style={styles.headerAccent} />
-        <Text style={styles.headerTagline}>Highlights, News & Official NBA Social</Text>
+        <Text style={styles.headerTagline}>Highlights, AI Articles, News & Official NBA Social</Text>
       </View>
 
-      {/* 4-way Segmented Control */}
+      {/* 5-way Segmented Control */}
       <View style={styles.segmentedControl}>
         <TouchableOpacity
           style={[styles.segmentButton, activeTab === 'highlights' && styles.segmentButtonActive]}
@@ -503,6 +618,20 @@ export default function MediaScreen() {
           />
           <Text style={[styles.segmentText, activeTab === 'highlights' && styles.segmentTextActive]}>
             Highlights
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentButton, activeTab === 'articles' && styles.segmentButtonActive]}
+          onPress={() => setActiveTab('articles')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="document-text"
+            size={15}
+            color={activeTab === 'articles' ? '#000000' : '#666666'}
+          />
+          <Text style={[styles.segmentText, activeTab === 'articles' && styles.segmentTextActive]}>
+            Articles
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -557,6 +686,12 @@ export default function MediaScreen() {
       ) : activeTab === 'highlights' ? (
         <HighlightsContent
           highlights={highlights}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        />
+      ) : activeTab === 'articles' ? (
+        <ArticlesContent
+          articles={articles}
           refreshing={refreshing}
           onRefresh={onRefresh}
         />
@@ -648,10 +783,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   segmentText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#666666',
-    marginLeft: 4,
+    marginLeft: 3,
   },
   segmentTextActive: {
     color: '#000000',
@@ -866,6 +1001,25 @@ const styles = StyleSheet.create({
     color: '#555555',
     fontWeight: '600',
     marginRight: 5,
+  },
+
+  // AI Articles
+  articlePicksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  articlePick: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 6,
+    overflow: 'hidden',
   },
 
   // Video Modal

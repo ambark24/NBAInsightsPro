@@ -288,10 +288,20 @@ async def fetch_nba_games_today():
                             logger.warning(f"Rate limited for {date}, waiting {2 + attempt * 2}s (attempt {attempt + 1}/3)")
                             await asyncio.sleep(2 + attempt * 2)
                             continue
+                        if response.status_code == 401:
+                            # Auth failure: retrying won't help. Key is missing/invalid.
+                            logger.error(
+                                "balldontlie.io returned 401 Unauthorized fetching games for "
+                                f"{date}. NBA_API_KEY is missing or invalid - check backend/.env."
+                            )
+                            break
                         response.raise_for_status()
                         break
                     else:
                         logger.error(f"Failed to fetch games for {date} after 3 retries")
+                        continue
+
+                    if response.status_code == 401:
                         continue
                     
                     data = response.json()
@@ -372,6 +382,12 @@ async def fetch_team_season_stats(team_id: int, team_name: str) -> Optional[Dict
                 if resp.status_code == 429:
                     await asyncio.sleep(2 + attempt * 2)
                     continue
+                if resp.status_code == 401:
+                    logger.error(
+                        f"balldontlie.io returned 401 Unauthorized fetching stats for team {team_id}. "
+                        "NBA_API_KEY is missing or invalid - check backend/.env."
+                    )
+                    return None
                 resp.raise_for_status()
                 break
             else:
@@ -1287,6 +1303,36 @@ async def get_nba_news():
         # Serve any stale cache if available
         stale = await db.news_cache.find({}, {"_id": 0, "cached_at": 0}).to_list(50)
         return stale
+
+@api_router.get("/articles")
+async def get_ai_articles(limit: int = 30):
+    """AI-written game analysis articles for the Media tab - PUBLIC ACCESS.
+
+    Built from stored predictions (the same consensus_article shown on game cards).
+    """
+    limit = max(1, min(limit, 50))
+    preds = await db.predictions.find(
+        {"consensus_article": {"$exists": True, "$ne": ""}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+
+    return [
+        {
+            "article_id": p["prediction_id"],
+            "game_id": p["game_id"],
+            "title": f"{p['away_team']} @ {p['home_team']}: Our Pick",
+            "body": p["consensus_article"],
+            "home_team": p["home_team"],
+            "away_team": p["away_team"],
+            "moneyline_pick": p.get("moneyline_pick"),
+            "spread_pick": p.get("spread_pick"),
+            "total_pick": p.get("total_pick"),
+            "confidence": p.get("confidence"),
+            "published": p.get("created_at"),
+            "source": "Pro Ball Insights AI",
+        }
+        for p in preds
+    ]
 
 # ==================== ADMIN ROUTES ====================
 
